@@ -1,1834 +1,406 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-
 <title>CampusCalc.ng — Student Academic Toolkit</title>
-
-<meta name="description" content="CampusCalc.ng is a free academic toolkit for Nigerian students. Calculate GPA and CGPA, manage courses, assignments, timetable, goals and notes.">
-
+<meta name="description" content="CampusCalc.ng — GPA, CGPA, courses, assignments, timetable, goals and study notes.">
 <meta name="theme-color" content="#2563eb">
 
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4HK7BD7MSQ"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-4HK7BD7MSQ');
+window.dataLayer=window.dataLayer||[];
+function gtag(){dataLayer.push(arguments);}
+gtag("js",new Date());
+gtag("config","G-4HK7BD7MSQ");
 </script>
 
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<script>
-tailwind.config={darkMode:"class"};
-</script>
-
+<script>tailwind.config={darkMode:"class"};</script>
 <style>
+*{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{
-  margin:0;
-  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
-}
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input,select,textarea{font:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
-.input{
-  width:100%;
-  box-sizing:border-box;
-  border:1px solid #cbd5e1;
-  border-radius:.75rem;
-  padding:.75rem;
-  background:#fff;
-  color:#0f172a;
-  outline:none
-}
-.input:focus{
-  border-color:#2563eb;
-  box-shadow:0 0 0 2px rgba(37,99,235,.12)
-}
-.dark .input{
-  background:#0f172a;
-  border-color:#334155;
-  color:#f8fafc
-}
-.dark .input::placeholder{color:#94a3b8}
+.input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#fff;color:#0f172a;outline:none}
+.input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.dark .input{background:#0f172a;border-color:#475569;color:#f8fafc}
 </style>
 </head>
 
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+<div id="app"></div>
 
-<div id="root"></div>
+<script>
+"use strict";
 
-<script type="text/babel">
-
-const {useState,useEffect}=React;
-
+/* ---------- storage ---------- */
+const KEY="campuscalc_stable_v1";
 const GRADE_POINTS={
- "5.0":{A:5,B:4,C:3,D:2,E:1,F:0},
- "4.0":{A:4,B:3,C:2,D:1,F:0}
+  "5.0":{A:5,B:4,C:3,D:2,E:1,F:0},
+  "4.0":{A:4,B:3,C:2,D:1,F:0}
 };
+const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
-const DAYS=[
- "Monday",
- "Tuesday",
- "Wednesday",
- "Thursday",
- "Friday",
- "Saturday",
- "Sunday"
-];
-
-function uid(){
- return Date.now()+Math.floor(Math.random()*100000)
-}
-
-function getStorage(key,fallback){
- try{
-  const x=localStorage.getItem(key);
-  return x===null?fallback:JSON.parse(x);
- }catch{
-  return fallback
- }
-}
-
-function saveStorage(key,value){
- try{
-  localStorage.setItem(key,JSON.stringify(value))
- }catch{}
-}
-
-function App(){
-
- const [page,setPage]=useState("dashboard");
-
- const [darkMode,setDarkMode]=useState(
-  ()=>getStorage("cc_dark",false)
- );
-
- const [gradingSystem,setGradingSystem]=useState(
-  ()=>getStorage("cc_system","5.0")
- );
-
- const [profile,setProfile]=useState(
-  ()=>getStorage(
-   "cc_profile",
-   {
-    name:"",
-    school:"",
-    department:"",
-    level:"",
-    matric:""
-   }
-  )
- );
-
- const [courses,setCourses]=useState(
-  ()=>getStorage(
-   "cc_courses",
-   [
-    {
-     id:uid(),
-     code:"",
-     name:"",
-     unit:3,
-     grade:"A",
-     rating:0,
-     shares:0
-    }
-   ]
-  )
- );
-
- const [semesters,setSemesters]=useState(
-  ()=>getStorage("cc_semesters",[])
- );
-
- const [assignments,setAssignments]=useState(
-  ()=>getStorage("cc_assignments",[])
- );
-
- const [timetable,setTimetable]=useState(
-  ()=>getStorage("cc_timetable",[])
- );
-
- const [goals,setGoals]=useState(
-  ()=>getStorage("cc_goals",[])
- );
-
- const [notes,setNotes]=useState(
-  ()=>getStorage("cc_notes","")
- );
-
- const [toast,setToast]=useState("");
-
- useEffect(()=>{
-  saveStorage("cc_dark",darkMode);
-  document.documentElement.classList.toggle("dark",darkMode);
- },[darkMode]);
-
- useEffect(()=>{
-  saveStorage("cc_system",gradingSystem)
- },[gradingSystem]);
-
- useEffect(()=>{
-  saveStorage("cc_profile",profile)
- },[profile]);
-
- useEffect(()=>{
-  saveStorage("cc_courses",courses)
- },[courses]);
-
- useEffect(()=>{
-  saveStorage("cc_semesters",semesters)
- },[semesters]);
-
- useEffect(()=>{
-  saveStorage("cc_assignments",assignments)
- },[assignments]);
-
- useEffect(()=>{
-  saveStorage("cc_timetable",timetable)
- },[timetable]);
-
- useEffect(()=>{
-  saveStorage("cc_goals",goals)
- },[goals]);
-
- useEffect(()=>{
-  saveStorage("cc_notes",notes)
- },[notes]);
-
- function notify(message){
-  setToast(message);
-  setTimeout(()=>setToast(""),2500);
- }
-
- function calculateGPA(){
-
-  let points=0,units=0;
-
-  courses.forEach(c=>{
-
-   const u=Math.max(
-    0,
-    Number(c.unit)||0
-   );
-
-   const p=
-    GRADE_POINTS[gradingSystem]?.[c.grade]??0;
-
-   points+=u*p;
-   units+=u;
-
-  });
-
-  return units
-   ?Number((points/units).toFixed(2))
-   :0;
- }
-
- const gpa=calculateGPA();
-
- function calculateCGPA(){
-
-  let points=0,units=0;
-
-  semesters.forEach(s=>{
-
-   const g=Math.max(
-    0,
-    Number(s.gpa)||0
-   );
-
-   const u=Math.max(
-    0,
-    Number(s.units)||0
-   );
-
-   points+=g*u;
-   units+=u;
-
-  });
-
-  return units
-   ?Number((points/units).toFixed(2))
-   :0;
- }
-
- const cgpa=calculateCGPA();
-
- function getRating(value){
-
-  const n=Number(value);
-  const max=Number(gradingSystem);
-
-  if(!n)return "Enter your courses";
-
-  const p=n/max;
-
-  if(p>=.8)return "Excellent 🎉";
-  if(p>=.7)return "Very Good 👍";
-  if(p>=.6)return "Good";
-  if(p>=.5)return "Fair";
-
-  return "Keep improving 💪";
- }
-
- function addCourse(){
-
-  setCourses([
-   ...courses,
-   {
-    id:uid(),
-    code:"",
-    name:"",
-    unit:3,
-    grade:"A",
-    rating:0,
-    shares:0
-   }
-  ]);
-
- }
-
- function updateCourse(id,field,value){
-
-  setCourses(
-   courses.map(
-    c=>c.id===id
-     ?{...c,[field]:value}
-     :c
-   )
-  );
-
- }
-
- function removeCourse(id){
-
-  if(courses.length===1){
-
-   setCourses([
-    {
-     id:uid(),
-     code:"",
-     name:"",
-     unit:3,
-     grade:"A",
-     rating:0,
-     shares:0
-    }
-   ]);
-
-  }else{
-
-   setCourses(
-    courses.filter(c=>c.id!==id)
-   );
-
-  }
-
- }
-
- async function shareCourse(course){
-
-  const title=
-   course.name||
-   course.code||
-   "My class";
-
-  const text=
-   `${title}${course.code&&course.name?" ("+course.code+")":""}\nRating: ${course.rating||0}/5\nShared from CampusCalc.ng`;
-
+function uid(){return Date.now()+"_"+Math.random().toString(36).slice(2,9)}
+function load(){
   try{
-
-   if(navigator.share){
-
-    await navigator.share({
-     title,
-     text
-    });
-
-    updateCourse(
-     course.id,
-     "shares",
-     (Number(course.shares)||0)+1
-    );
-
-   }else{
-
-    await navigator.clipboard.writeText(text);
-
-    updateCourse(
-     course.id,
-     "shares",
-     (Number(course.shares)||0)+1
-    );
-
-    notify("Class details copied!");
-
-   }
-
-  }catch{}
-
- }
-
- function saveSemester(){
-
-  const units=courses.reduce(
-   (sum,c)=>sum+(Number(c.unit)||0),
-   0
-  );
-
-  if(!units){
-   notify("Add course units first.");
-   return
-  }
-
-  setSemesters([
-   ...semesters,
-   {
-    id:uid(),
-    name:`Semester ${semesters.length+1}`,
-    gpa,
-    units,
-    system:gradingSystem,
-    date:new Date().toLocaleDateString()
-   }
-  ]);
-
-  notify("Semester saved successfully!");
-
- }
-
- function deleteSemester(id){
-
-  setSemesters(
-   semesters.filter(s=>s.id!==id)
-  );
-
- }
-
- function addAssignment(title,course,date){
-
-  if(!title.trim()){
-   notify("Enter an assignment title.");
-   return
-  }
-
-  setAssignments([
-   ...assignments,
-   {
-    id:uid(),
-    title:title.trim(),
-    course,
-    date,
-    completed:false
-   }
-  ]);
-
-  notify("Assignment added!");
-
- }
-
- function toggleAssignment(id){
-
-  setAssignments(
-   assignments.map(
-    a=>a.id===id
-     ?{...a,completed:!a.completed}
-     :a
-   )
-  );
-
- }
-
- function deleteAssignment(id){
-
-  setAssignments(
-   assignments.filter(a=>a.id!==id)
-  );
-
- }
-
- function addGoal(title){
-
-  if(!title.trim()){
-   notify("Enter a goal.");
-   return
-  }
-
-  setGoals([
-   ...goals,
-   {
-    id:uid(),
-    title:title.trim(),
-    completed:false
-   }
-  ]);
-
-  notify("Goal added!");
-
- }
-
- function toggleGoal(id){
-
-  setGoals(
-   goals.map(
-    g=>g.id===id
-     ?{...g,completed:!g.completed}
-     :g
-   )
-  );
-
- }
-
- function deleteGoal(id){
-
-  setGoals(
-   goals.filter(g=>g.id!==id)
-  );
-
- }
-
- function addClass(day,course,time,location){
-
-  if(!course.trim()){
-   notify("Enter a course.");
-   return
-  }
-
-  setTimetable([
-   ...timetable,
-   {
-    id:uid(),
-    day,
-    course:course.trim(),
-    time,
-    location
-   }
-  ]);
-
-  notify("Class added!");
-
- }
-
- function exportData(){
-
-  const data={
-   profile,
-   gradingSystem,
-   courses,
-   semesters,
-   assignments,
-   timetable,
-   goals,
-   notes,
-   exportedAt:new Date().toISOString()
+    const x=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(x)return x;
+  }catch(e){}
+  return {
+    page:"dashboard",dark:false,system:"5.0",
+    profile:{name:"",school:"",department:"",level:"",matric:""},
+    courses:[{id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0}],
+    semesters:[],assignments:[],timetable:[],goals:[],notes:""
   };
-
-  const blob=new Blob(
-   [JSON.stringify(data,null,2)],
-   {type:"application/json"}
-  );
-
-  const url=URL.createObjectURL(blob);
-
-  const a=document.createElement("a");
-
-  a.href=url;
-  a.download="campuscalc-backup.json";
-  a.click();
-
-  URL.revokeObjectURL(url);
-
-  notify("Backup exported!");
-
- }
-
- function importData(event){
-
-  const file=event.target.files?.[0];
-
-  if(!file)return;
-
-  const reader=new FileReader();
-
-  reader.onload=()=>{
-
-   try{
-
-    const d=JSON.parse(reader.result);
-
-    if(d.profile)
-     setProfile(d.profile);
-
-    if(d.gradingSystem)
-     setGradingSystem(d.gradingSystem);
-
-    if(Array.isArray(d.courses))
-     setCourses(d.courses);
-
-    if(Array.isArray(d.semesters))
-     setSemesters(d.semesters);
-
-    if(Array.isArray(d.assignments))
-     setAssignments(d.assignments);
-
-    if(Array.isArray(d.timetable))
-     setTimetable(d.timetable);
-
-    if(Array.isArray(d.goals))
-     setGoals(d.goals);
-
-    if(typeof d.notes==="string")
-     setNotes(d.notes);
-
-    notify("Backup imported!");
-
-   }catch{
-
-    notify("Invalid backup file.");
-
-   }
-
-  };
-
-  reader.readAsText(file);
-
-  event.target.value="";
-
- }
-
- function resetApp(){
-
-  if(!confirm(
-   "Delete all CampusCalc data stored on this device?"
-  ))return;
-
-  localStorage.clear();
-  location.reload();
-
- }
-
- function Navbar(){
-
-  return <header className="sticky top-0 z-50 bg-blue-700 text-white shadow-lg">
-
-   <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-
-    <button
-     onClick={()=>setPage("dashboard")}
-     className="text-xl font-black"
-    >
-     Campus<span className="text-blue-200">Calc</span>
-     <span className="text-xs ml-1 text-blue-200">.ng</span>
-    </button>
-
-    <div className="flex gap-2">
-
-     <button
-      onClick={()=>setDarkMode(!darkMode)}
-      className="bg-blue-600 rounded-xl px-3 py-2"
-     >
-      {darkMode?"☀️":"🌙"}
-     </button>
-
-     <button
-      onClick={()=>setPage("profile")}
-      className="bg-blue-600 rounded-xl px-3 py-2"
-     >
-      👤
-     </button>
-
-    </div>
-
-   </div>
-
-  </header>
-
- }
-
- function BottomNav(){
-
-  return <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t dark:border-slate-800 safe-bottom">
-
-   <div className="max-w-2xl mx-auto grid grid-cols-5">
-
-    <NavButton
-     icon="🏠"
-     text="Home"
-     name="dashboard"
-    />
-
-    <NavButton
-     icon="📊"
-     text="GPA"
-     name="gpa"
-    />
-
-    <NavButton
-     icon="🎯"
-     text="CGPA"
-     name="cgpa"
-    />
-
-    <NavButton
-     icon="📝"
-     text="Tasks"
-     name="tasks"
-    />
-
-    <NavButton
-     icon="📚"
-     text="More"
-     name="more"
-    />
-
-   </div>
-
-  </nav>
-
- }
-
- function NavButton({icon,text,name}){
-
-  return <button
-   onClick={()=>setPage(name)}
-   className={`py-3 text-xs font-bold ${
-    page===name
-     ?"text-blue-600"
-     :"text-slate-500 dark:text-slate-400"
-   }`}
-  >
-
-   <div className="text-lg">
-    {icon}
-   </div>
-
-   {text}
-
-  </button>
-
- }
-
- function AppShell({children}){
-
-  return <>
-   <Navbar/>
-   {children}
-   <BottomNav/>
-
-   {toast&&
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-bold">
-     {toast}
-    </div>
-   }
-
-  </>
-
- }
-
- function PageTitle({title,subtitle}){
-
-  return <div className="mb-6">
-
-   <h1 className="text-3xl font-black">
-    {title}
-   </h1>
-
-   <p className="text-slate-500 dark:text-slate-400 mt-1">
-    {subtitle}
-   </p>
-
-  </div>
-
- }
-
- function StatCard({title,value,subtitle,icon}){
-
-  return <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border dark:border-slate-800">
-
-   <div className="text-2xl">
-    {icon}
-   </div>
-
-   <div className="text-sm text-slate-500 mt-2">
-    {title}
-   </div>
-
-   <div className="text-3xl font-black mt-1">
-    {value}
-   </div>
-
-   <div className="text-xs text-slate-500">
-    {subtitle}
-   </div>
-
-  </div>
-
- }
-
- function QuickCard({icon,title,text,onClick}){
-
-  return <button
-   onClick={onClick}
-   className="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 shadow-sm hover:shadow-md"
-  >
-
-   <div className="text-3xl">
-    {icon}
-   </div>
-
-   <h3 className="font-black text-lg mt-3">
-    {title}
-   </h3>
-
-   <p className="text-sm text-slate-500 mt-1">
-    {text}
-   </p>
-
-  </button>
-
- }
-
- function EmptyState({icon,text}){
-
-  return <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-10 text-center text-slate-500">
-
-   <div className="text-4xl">
-    {icon}
-   </div>
-
-   <p className="mt-3">
-    {text}
-   </p>
-
-  </div>
-
- }
-
- function AssignmentForm(){
-
-  const [title,setTitle]=useState("");
-  const [course,setCourse]=useState("");
-  const [date,setDate]=useState("");
-
-  return <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-   <div className="grid md:grid-cols-3 gap-3">
-
-    <input
-     className="input"
-     placeholder="Assignment title"
-     value={title}
-     onChange={e=>setTitle(e.target.value)}
-    />
-
-    <input
-     className="input"
-     placeholder="Course"
-     value={course}
-     onChange={e=>setCourse(e.target.value)}
-    />
-
-    <input
-     className="input"
-     type="date"
-     value={date}
-     onChange={e=>setDate(e.target.value)}
-    />
-
-   </div>
-
-   <button
-    onClick={()=>{
-     addAssignment(title,course,date);
-     setTitle("");
-     setCourse("");
-     setDate("")
-    }}
-    className="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black"
-   >
-    + Add Assignment
-   </button>
-
-  </div>
-
- }
-
- function TimetableForm(){
-
-  const [day,setDay]=useState("Monday");
-  const [course,setCourse]=useState("");
-  const [time,setTime]=useState("");
-  const [location,setLocation]=useState("");
-
-  return <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-   <div className="grid md:grid-cols-4 gap-3">
-
-    <select
-     className="input"
-     value={day}
-     onChange={e=>setDay(e.target.value)}
-    >
-     {DAYS.map(d=>
-      <option key={d}>{d}</option>
-     )}
-    </select>
-
-    <input
-     className="input"
-     placeholder="Course"
-     value={course}
-     onChange={e=>setCourse(e.target.value)}
-    />
-
-    <input
-     className="input"
-     placeholder="Time e.g. 10:00 AM"
-     value={time}
-     onChange={e=>setTime(e.target.value)}
-    />
-
-    <input
-     className="input"
-     placeholder="Location"
-     value={location}
-     onChange={e=>setLocation(e.target.value)}
-    />
-
-   </div>
-
-   <button
-    onClick={()=>{
-     addClass(day,course,time,location);
-     setCourse("");
-     setTime("");
-     setLocation("")
-    }}
-    className="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black"
-   >
-    + Add Class
-   </button>
-
-  </div>
-
- }
-
- function GoalForm(){
-
-  const [title,setTitle]=useState("");
-
-  return <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-   <div className="flex gap-2">
-
-    <input
-     className="input"
-     placeholder="e.g. Get 4.5 GPA"
-     value={title}
-     onChange={e=>setTitle(e.target.value)}
-    />
-
-    <button
-     onClick={()=>{
-      addGoal(title);
-      setTitle("")
-     }}
-     className="bg-blue-600 text-white px-5 rounded-xl font-black"
-    >
-     Add
-    </button>
-
-   </div>
-
-  </div>
-
- }
-
- if(page==="dashboard")
-
- return <AppShell>
-
-  <main className="max-w-7xl mx-auto px-4 py-7 pb-28">
-
-   <section className="bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 rounded-3xl p-6 md:p-10 text-white shadow-xl">
-
-    <p className="text-blue-200">
-     Welcome back 👋
-    </p>
-
-    <h1 className="text-3xl md:text-5xl font-black mt-2">
-     {profile.name||"Student"}
-    </h1>
-
-    <p className="mt-3 text-blue-100">
-     {profile.school||"Your academic dashboard"}
-    </p>
-
-    <button
-     onClick={()=>setPage("gpa")}
-     className="mt-6 bg-white text-blue-700 font-black px-6 py-3 rounded-xl"
-    >
-     Calculate GPA →
-    </button>
-
-   </section>
-
-   <section className="grid md:grid-cols-3 gap-4 mt-6">
-
-    <StatCard
-     title="Current GPA"
-     value={gpa.toFixed(2)}
-     subtitle={`out of ${gradingSystem}`}
-     icon="📊"
-    />
-
-    <StatCard
-     title="CGPA"
-     value={cgpa.toFixed(2)}
-     subtitle={`out of ${gradingSystem}`}
-     icon="🎯"
-    />
-
-    <StatCard
-     title="Semesters"
-     value={semesters.length}
-     subtitle="saved"
-     icon="📚"
-    />
-
-   </section>
-
-   <section className="grid md:grid-cols-2 gap-5 mt-6">
-
-    <QuickCard
-     icon="📊"
-     title="GPA Calculator"
-     text="Calculate your semester GPA."
-     onClick={()=>setPage("gpa")}
-    />
-
-    <QuickCard
-     icon="🎯"
-     title="CGPA Calculator"
-     text="Track your cumulative GPA."
-     onClick={()=>setPage("cgpa")}
-    />
-
-    <QuickCard
-     icon="📝"
-     title="Assignments"
-     text={`${assignments.filter(a=>!a.completed).length} pending tasks`}
-     onClick={()=>setPage("tasks")}
-    />
-
-    <QuickCard
-     icon="📅"
-     title="Timetable"
-     text="Organize your classes."
-     onClick={()=>setPage("timetable")}
-    />
-
-   </section>
-
-   <section className="mt-7 bg-white dark:bg-slate-900 rounded-2xl p-6 border dark:border-slate-800">
-
-    <h2 className="text-xl font-black">
-     Academic Rating
-    </h2>
-
-    <p className="text-slate-500 mt-1">
-     Based on your current GPA
-    </p>
-
-    <div className="mt-4 text-2xl font-black text-blue-600">
-     {getRating(gpa)}
-    </div>
-
-   </section>
-
-  </main>
-
- </AppShell>;
-
- if(page==="gpa")
-
- return <AppShell>
-
-  <main className="max-w-5xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="GPA Calculator"
-    subtitle="Calculate your semester GPA."
-   />
-
-   <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-    <div className="flex gap-2 mb-6">
-
-     {["5.0","4.0"].map(s=>
-
-      <button
-       key={s}
-       onClick={()=>setGradingSystem(s)}
-       className={`flex-1 py-3 rounded-xl font-black ${
-        gradingSystem===s
-         ?"bg-blue-600 text-white"
-         :"bg-slate-100 dark:bg-slate-800"
-       }`}
-      >
-       {s} System
-      </button>
-
-     )}
-
-    </div>
-
-    <div className="space-y-4">
-
-     {courses.map((c,i)=>
-
-      <div
-       key={c.id}
-       className="border dark:border-slate-700 rounded-2xl p-4"
-      >
-
-       <div className="flex justify-between items-center mb-3">
-
-        <strong>
-         Course {i+1}
-        </strong>
-
-        <button
-         onClick={()=>removeCourse(c.id)}
-         className="text-red-500 text-sm font-bold"
-        >
-         Remove
-        </button>
-
-       </div>
-
-       <div className="grid md:grid-cols-5 gap-3">
-
-        <input
-         className="input"
-         placeholder="Course code"
-         value={c.code}
-         onChange={e=>
-          updateCourse(c.id,"code",e.target.value)
-         }
-        />
-
-        <input
-         className="input"
-         placeholder="Course name"
-         value={c.name}
-         onChange={e=>
-          updateCourse(c.id,"name",e.target.value)
-         }
-        />
-
-        <input
-         className="input"
-         type="number"
-         min="0"
-         max="30"
-         placeholder="Units"
-         value={c.unit}
-         onChange={e=>
-          updateCourse(c.id,"unit",e.target.value)
-         }
-        />
-
-        <select
-         className="input"
-         value={c.grade}
-         onChange={e=>
-          updateCourse(c.id,"grade",e.target.value)
-         }
-        >
-         {Object.keys(GRADE_POINTS[gradingSystem]).map(g=>
-          <option key={g}>{g}</option>
-         )}
-        </select>
-
-        <div className="flex items-center gap-2">
-
-         <input
-          className="input"
-          type="number"
-          min="0"
-          max="5"
-          step=".1"
-          placeholder="Rate /5"
-          value={c.rating}
-          onChange={e=>
-           updateCourse(c.id,"rating",e.target.value)
-          }
-         />
-
-        </div>
-
-       </div>
-
-       <div className="mt-3 flex flex-wrap items-center gap-2">
-
-        <span className="text-sm text-slate-500">
-         ⭐ {Number(c.rating||0).toFixed(1)}/5
-        </span>
-
-        <button
-         onClick={()=>shareCourse(c)}
-         className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold"
-        >
-         📤 Share Class
-        </button>
-
-        <span className="text-xs text-slate-500">
-         Shared {Number(c.shares)||0} time{Number(c.shares)===1?"":"s"}
-        </span>
-
-       </div>
-
-      </div>
-
-     )}
-
-    </div>
-
-    <button
-     onClick={addCourse}
-     className="w-full mt-5 bg-emerald-600 text-white py-3 rounded-xl font-black"
-    >
-     + Add Course
-    </button>
-
-    <div className="mt-7 bg-blue-50 dark:bg-blue-950 rounded-2xl p-7 text-center">
-
-     <p className="text-slate-500 dark:text-blue-200">
-      Your GPA
-     </p>
-
-     <div className="text-6xl font-black text-blue-600 mt-2">
-      {gpa.toFixed(2)}
-     </div>
-
-     <p className="mt-2">
-      {getRating(gpa)} · / {gradingSystem}
-     </p>
-
-     <button
-      onClick={saveSemester}
-      className="mt-5 bg-blue-600 text-white px-6 py-3 rounded-xl font-black"
-     >
-      💾 Save Semester
-     </button>
-
-    </div>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="cgpa")
-
- return <AppShell>
-
-  <main className="max-w-5xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="CGPA Calculator"
-    subtitle="Track your academic performance across semesters."
-   />
-
-   <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-    <div className="mb-6">
-
-     <label className="text-sm font-bold">
-      Grading system
-     </label>
-
-     <select
-      className="input mt-2"
-      value={gradingSystem}
-      onChange={e=>setGradingSystem(e.target.value)}
-     >
-      <option value="5.0">5.0 System</option>
-      <option value="4.0">4.0 System</option>
-     </select>
-
-    </div>
-
-    {!semesters.length&&
-     <EmptyState
-      icon="🎓"
-      text="No semesters saved yet. Save a GPA semester first."
-     />
-    }
-
-    <div className="space-y-4 mt-4">
-
-     {semesters.map((s,i)=>
-
-      <div
-       key={s.id}
-       className="border dark:border-slate-700 rounded-2xl p-4"
-      >
-
-       <div className="flex justify-between mb-3">
-
-        <strong>
-         {s.name||`Semester ${i+1}`}
-        </strong>
-
-        <button
-         onClick={()=>deleteSemester(s.id)}
-         className="text-red-500 text-sm font-bold"
-        >
-         Delete
-        </button>
-
-       </div>
-
-       <div className="grid md:grid-cols-3 gap-3">
-
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-         <div className="text-xs text-slate-500">
-          GPA
-         </div>
-         <div className="text-2xl font-black">
-          {Number(s.gpa).toFixed(2)}
-         </div>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-         <div className="text-xs text-slate-500">
-          Units
-         </div>
-         <div className="text-2xl font-black">
-          {s.units}
-         </div>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-         <div className="text-xs text-slate-500">
-          Date
-         </div>
-         <div className="font-bold mt-1">
-          {s.date}
-         </div>
-        </div>
-
-       </div>
-
-      </div>
-
-     )}
-
-    </div>
-
-    <div className="mt-7 bg-indigo-50 dark:bg-indigo-950 rounded-2xl p-7 text-center">
-
-     <p className="text-slate-500 dark:text-indigo-200">
-      Current CGPA
-     </p>
-
-     <div className="text-6xl font-black text-indigo-600 mt-2">
-      {cgpa.toFixed(2)}
-     </div>
-
-     <p className="mt-2">
-      out of {gradingSystem}
-     </p>
-
-    </div>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="tasks")
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Assignments"
-    subtitle="Keep track of your academic tasks."
-   />
-
-   <AssignmentForm/>
-
-   <div className="mt-6 space-y-3">
-
-    {!assignments.length&&
-     <EmptyState
-      icon="📝"
-      text="No assignments yet."
-     />
-    }
-
-    {assignments.map(a=>
-
-     <div
-      key={a.id}
-      className={`bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex items-center gap-4 ${
-       a.completed?"opacity-60":""
-      }`}
-     >
-
-      <button
-       onClick={()=>toggleAssignment(a.id)}
-       className="text-2xl"
-      >
-       {a.completed?"✅":"⬜"}
-      </button>
-
-      <div className="flex-1">
-
-       <div
-        className={`font-bold ${
-         a.completed?"line-through":""
-        }`}
-       >
-        {a.title}
-       </div>
-
-       <div className="text-sm text-slate-500">
-        {a.course||"General"} · {a.date||"No date"}
-       </div>
-
-      </div>
-
-      <button
-       onClick={()=>deleteAssignment(a.id)}
-       className="text-red-500"
-      >
-       🗑️
-      </button>
-
-     </div>
-
-    )}
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="timetable")
-
- return <AppShell>
-
-  <main className="max-w-5xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Timetable"
-    subtitle="Organize your weekly classes."
-   />
-
-   <TimetableForm/>
-
-   <div className="grid md:grid-cols-2 gap-4 mt-6">
-
-    {!timetable.length&&
-     <div className="md:col-span-2">
-      <EmptyState
-       icon="📅"
-       text="Your timetable is empty."
-      />
-     </div>
-    }
-
-    {timetable.map(t=>
-
-     <div
-      key={t.id}
-      className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"
-     >
-
-      <div className="flex justify-between">
-
-       <div>
-
-        <div className="text-blue-600 font-black">
-         {t.day}
-        </div>
-
-        <h3 className="text-xl font-black">
-         {t.course}
-        </h3>
-
-        <p className="text-slate-500">
-         {t.time||"Time not added"}
-        </p>
-
-        <p className="text-slate-500">
-         📍 {t.location||"Location not added"}
-        </p>
-
-       </div>
-
-       <button
-        onClick={()=>
-         setTimetable(
-          timetable.filter(x=>x.id!==t.id)
-         )
-        }
-        className="text-red-500"
-       >
-        🗑️
-       </button>
-
-      </div>
-
-     </div>
-
-    )}
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="goals")
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Academic Goals"
-    subtitle="Set goals and track your progress."
-   />
-
-   <GoalForm/>
-
-   <div className="mt-6 space-y-3">
-
-    {!goals.length&&
-     <EmptyState
-      icon="🎯"
-      text="No goals yet."
-     />
-    }
-
-    {goals.map(g=>
-
-     <div
-      key={g.id}
-      className={`bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3 ${
-       g.completed?"opacity-60":""
-      }`}
-     >
-
-      <button
-       onClick={()=>toggleGoal(g.id)}
-       className="text-xl"
-      >
-       {g.completed?"✅":"⬜"}
-      </button>
-
-      <div
-       className={`flex-1 font-bold ${
-        g.completed?"line-through":""
-       }`}
-      >
-       {g.title}
-      </div>
-
-      <button
-       onClick={()=>deleteGoal(g.id)}
-       className="text-red-500"
-      >
-       🗑️
-      </button>
-
-     </div>
-
-    )}
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="notes")
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Study Notes"
-    subtitle="Keep useful notes on this device."
-   />
-
-   <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-    <textarea
-     className="input min-h-[320px]"
-     placeholder="Write your study notes here..."
-     value={notes}
-     onChange={e=>setNotes(e.target.value)}
-    />
-
-    <p className="text-xs text-slate-500 mt-2">
-     Saved automatically on this device.
-    </p>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="profile")
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Student Profile"
-    subtitle="Manage your student information."
-   />
-
-   <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 space-y-4">
-
-    {[
-     ["name","Full name"],
-     ["school","School / University"],
-     ["department","Department"],
-     ["level","Level"],
-     ["matric","Matric number"]
-    ].map(([key,label])=>
-
-     <div key={key}>
-
-      <label className="text-sm font-bold">
-       {label}
-      </label>
-
-      <input
-       className="input mt-1"
-       value={profile[key]}
-       onChange={e=>
-        setProfile({
-         ...profile,
-         [key]:e.target.value
-        })
-       }
-       placeholder={label}
-      />
-
-     </div>
-
-    )}
-
-    <button
-     onClick={()=>{
-      setPage("dashboard");
-      notify("Profile saved!")
-     }}
-     className="w-full bg-blue-600 text-white py-3 rounded-xl font-black"
-    >
-     Save Profile
-    </button>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="settings")
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="Settings & Data"
-    subtitle="Manage your CampusCalc data."
-   />
-
-   <div className="space-y-4">
-
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-     <h2 className="font-black text-lg">
-      Appearance
-     </h2>
-
-     <button
-      onClick={()=>setDarkMode(!darkMode)}
-      className="mt-3 bg-slate-100 dark:bg-slate-800 px-5 py-3 rounded-xl font-bold"
-     >
-      {darkMode?"☀️ Light mode":"🌙 Dark mode"}
-     </button>
-
-    </div>
-
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-     <h2 className="font-black text-lg">
-      Backup
-     </h2>
-
-     <div className="flex flex-col md:flex-row gap-3 mt-3">
-
-      <button
-       onClick={exportData}
-       className="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold"
-      >
-       📤 Export Data
-      </button>
-
-      <label className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold text-center cursor-pointer">
-
-       📥 Import Data
-
-       <input
-        type="file"
-        accept=".json,application/json"
-        onChange={importData}
-        className="hidden"
-       />
-
-      </label>
-
-     </div>
-
-    </div>
-
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-red-200 dark:border-red-900">
-
-     <h2 className="font-black text-lg">
-      Danger zone
-     </h2>
-
-     <p className="text-sm text-slate-500 mt-1">
-      This removes locally saved CampusCalc data from this device.
-     </p>
-
-     <button
-      onClick={resetApp}
-      className="mt-3 bg-red-600 text-white px-5 py-3 rounded-xl font-bold"
-     >
-      🔄 Reset All Data
-     </button>
-
-    </div>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- if(page==="more")
-
- return <AppShell>
-
-  <main className="max-w-5xl mx-auto px-4 py-7 pb-28">
-
-   <PageTitle
-    title="More Tools"
-    subtitle="More ways to organize your student life."
-   />
-
-   <div className="grid md:grid-cols-2 gap-4">
-
-    <QuickCard
-     icon="📅"
-     title="Timetable"
-     text="Organize weekly classes."
-     onClick={()=>setPage("timetable")}
-    />
-
-    <QuickCard
-     icon="🎯"
-     title="Academic Goals"
-     text="Set goals and track progress."
-     onClick={()=>setPage("goals")}
-    />
-
-    <QuickCard
-     icon="🗒️"
-     title="Study Notes"
-     text="Keep your study notes."
-     onClick={()=>setPage("notes")}
-    />
-
-    <QuickCard
-     icon="👤"
-     title="Student Profile"
-     text="Manage your information."
-     onClick={()=>setPage("profile")}
-    />
-
-    <QuickCard
-     icon="⚙️"
-     title="Settings & Data"
-     text="Backup, import or reset data."
-     onClick={()=>setPage("settings")}
-    />
-
-   </div>
-
-   <div className="mt-6 bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-
-    <h2 className="font-black">
-     CampusCalc.ng
-    </h2>
-
-    <p className="text-sm text-slate-500 mt-1">
-     Student Academic Toolkit · V3
-    </p>
-
-   </div>
-
-  </main>
-
- </AppShell>;
-
- return <AppShell>
-
-  <main className="max-w-4xl mx-auto p-6 pb-28">
-
-   <EmptyState
-    icon="❓"
-    text="Page not found."
-   />
-
-  </main>
-
- </AppShell>;
-
+}
+let state=load();
+
+function save(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(state));
+  }catch(e){}
+}
+function setPage(page){
+  state.page=page;
+  save();
+  render();
+  window.scrollTo(0,0);
+}
+function toast(msg){
+  const old=document.getElementById("toast");
+  if(old)old.remove();
+  const el=document.createElement("div");
+  el.id="toast";
+  el.className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[10000] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm";
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2200);
+}
+function esc(v){
+  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function gpa(){
+  let p=0,u=0;
+  state.courses.forEach(c=>{
+    const units=Math.max(0,Number(c.unit)||0);
+    p+=units*(GRADE_POINTS[state.system]?.[c.grade]??0);
+    u+=units;
+  });
+  return u?+(p/u).toFixed(2):0;
+}
+function cgpa(){
+  let p=0,u=0;
+  state.semesters.forEach(s=>{
+    const units=Math.max(0,Number(s.units)||0);
+    p+=units*(Number(s.gpa)||0); u+=units;
+  });
+  return u?+(p/u).toFixed(2):0;
+}
+function rating(x){
+  const r=x/Number(state.system);
+  return !x?"Enter your courses":r>=.8?"Excellent 🎉":r>=.7?"Very Good 👍":r>=.6?"Good":r>=.5?"Fair":"Keep improving 💪";
 }
 
-ReactDOM.createRoot(
- document.getElementById("root")
-).render(<App/>);
+/* ---------- layout ---------- */
+function nav(){
+  const items=[
+    ["🏠","Home","dashboard"],["📊","GPA","gpa"],["🎯","CGPA","cgpa"],
+    ["📝","Tasks","tasks"],["📚","More","more"]
+  ];
+  return `<nav class="fixed bottom-0 left-0 right-0 z-[9999] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-lg safe-bottom">
+    <div class="max-w-2xl mx-auto grid grid-cols-5">
+      ${items.map(x=>`<button type="button" data-nav="${x[2]}" class="min-h-[66px] w-full flex flex-col items-center justify-center text-xs font-bold ${state.page===x[2]?"text-blue-600":"text-slate-500 dark:text-slate-400"}">
+        <span class="text-xl">${x[0]}</span><span>${x[1]}</span>
+      </button>`).join("")}
+    </div>
+  </nav>`;
+}
+function header(){
+  return `<header class="sticky top-0 z-[9998] bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        ${state.page!=="dashboard"?`<button type="button" data-nav="dashboard" class="bg-blue-600 rounded-xl px-3 py-2 text-lg font-black">←</button>`:""}
+        <button type="button" data-nav="dashboard" class="text-xl font-black">Campus<span class="text-blue-200">Calc</span><span class="text-xs ml-1 text-blue-200">.ng</span></button>
+      </div>
+      <div class="flex gap-2">
+        <button type="button" data-action="dark" class="bg-blue-600 rounded-xl px-3 py-2">${state.dark?"☀️":"🌙"}</button>
+        <button type="button" data-nav="profile" class="bg-blue-600 rounded-xl px-3 py-2">👤</button>
+      </div>
+    </div>
+  </header>`;
+}
+function shell(title,sub,content){
+  return `${header()}<main class="max-w-6xl mx-auto px-4 py-7 pb-28">
+    <div class="mb-6 flex items-start gap-3">
+      ${state.page!=="dashboard"?`<button type="button" data-nav="dashboard" class="border dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl font-black shadow-sm">← Back</button>`:""}
+      <div><h1 class="text-3xl font-black">${title}</h1><p class="text-slate-500 dark:text-slate-400 mt-1">${sub}</p></div>
+    </div>${content}
+  </main>${nav()}`;
+}
+function card(icon,title,text,target){
+  return `<button type="button" data-nav="${target}" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 shadow-sm hover:shadow-md w-full">
+    <div class="text-3xl">${icon}</div><h3 class="font-black text-lg mt-3">${title}</h3><p class="text-sm text-slate-500 mt-1">${text}</p>
+  </button>`;
+}
 
+/* ---------- pages ---------- */
+function dashboard(){
+  return `${header()}<main class="max-w-7xl mx-auto px-4 py-7 pb-28">
+    <section class="bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 rounded-3xl p-6 md:p-10 text-white shadow-xl">
+      <p class="text-blue-200">Welcome back 👋</p>
+      <h1 class="text-3xl md:text-5xl font-black mt-2">${esc(state.profile.name||"Student")}</h1>
+      <p class="mt-3 text-blue-100">${esc(state.profile.school||"Your academic dashboard")}</p>
+      <button type="button" data-nav="gpa" class="mt-6 bg-white text-blue-700 font-black px-6 py-3 rounded-xl">Calculate GPA →</button>
+    </section>
+    <section class="grid md:grid-cols-3 gap-4 mt-6">
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">📊</div><div class="text-sm text-slate-500 mt-2">Current GPA</div><div class="text-3xl font-black">${gpa().toFixed(2)}</div><div class="text-xs text-slate-500">out of ${state.system}</div></div>
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">🎯</div><div class="text-sm text-slate-500 mt-2">CGPA</div><div class="text-3xl font-black">${cgpa().toFixed(2)}</div><div class="text-xs text-slate-500">out of ${state.system}</div></div>
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">📚</div><div class="text-sm text-slate-500 mt-2">Semesters</div><div class="text-3xl font-black">${state.semesters.length}</div><div class="text-xs text-slate-500">saved</div></div>
+    </section>
+    <section class="grid md:grid-cols-2 gap-5 mt-6">
+      ${card("📊","GPA Calculator","Calculate your semester GPA.","gpa")}
+      ${card("🎯","CGPA Calculator","Track your cumulative GPA.","cgpa")}
+      ${card("📝","Assignments",`${state.assignments.filter(x=>!x.completed).length} pending tasks`,"tasks")}
+      ${card("📅","Timetable","Organize your classes.","timetable")}
+    </section>
+    <section class="mt-6 bg-white dark:bg-slate-900 rounded-2xl p-6 border dark:border-slate-800">
+      <h2 class="text-xl font-black">Academic Rating</h2><p class="text-slate-500 mt-1">${rating(gpa())}</p>
+    </section>
+  </main>${nav()}`;
+}
+
+function gpaPage(){
+  const grades=Object.keys(GRADE_POINTS[state.system]);
+  return shell("GPA Calculator","Calculate your semester GPA.",`
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
+      <div class="flex gap-2 mb-6">
+        ${["5.0","4.0"].map(s=>`<button type="button" data-system="${s}" class="flex-1 py-3 rounded-xl font-black ${state.system===s?"bg-blue-600 text-white":"bg-slate-100 dark:bg-slate-800"}">${s} System</button>`).join("")}
+      </div>
+      <div class="space-y-4">
+      ${state.courses.map((c,i)=>`
+        <div class="border dark:border-slate-700 rounded-2xl p-4">
+          <div class="flex justify-between mb-3"><strong>Course ${i+1}</strong><button type="button" data-remove-course="${c.id}" class="text-red-500 font-bold">Remove</button></div>
+          <div class="grid md:grid-cols-5 gap-3">
+            <input class="input" data-course="${c.id}" data-field="code" value="${esc(c.code)}" placeholder="Course code">
+            <input class="input" data-course="${c.id}" data-field="name" value="${esc(c.name)}" placeholder="Course name">
+            <input class="input" type="number" min="0" max="30" data-course="${c.id}" data-field="unit" value="${esc(c.unit)}" placeholder="Units">
+            <select class="input" data-course="${c.id}" data-field="grade">${grades.map(g=>`<option ${c.grade===g?"selected":""}>${g}</option>`).join("")}</select>
+            <input class="input" type="number" min="0" max="5" step=".1" data-course="${c.id}" data-field="rating" value="${esc(c.rating)}" placeholder="Rate /5">
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <span class="text-sm text-slate-500">⭐ ${Number(c.rating||0).toFixed(1)}/5</span>
+            <button type="button" data-share-course="${c.id}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold">📤 Share Class</button>
+            <span class="text-xs text-slate-500">Shared ${Number(c.shares)||0} time${Number(c.shares)===1?"":"s"}</span>
+          </div>
+        </div>`).join("")}
+      </div>
+      <button type="button" data-add-course class="w-full mt-5 bg-emerald-600 text-white py-3 rounded-xl font-black">+ Add Course</button>
+      <div class="mt-7 bg-blue-50 dark:bg-blue-950 rounded-2xl p-7 text-center">
+        <p class="text-slate-500">Your GPA</p><div class="text-6xl font-black text-blue-600 mt-2">${gpa().toFixed(2)}</div>
+        <p class="mt-2">${rating(gpa())} · / ${state.system}</p>
+        <button type="button" data-save-semester class="mt-5 bg-blue-600 text-white px-6 py-3 rounded-xl font-black">💾 Save Semester</button>
+      </div>
+    </div>`);
+}
+function cgpaPage(){
+  return shell("CGPA Calculator","Track your academic performance across semesters.",`
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
+      <label class="text-sm font-bold">Grading system</label>
+      <select class="input mt-2" data-system-select><option value="5.0" ${state.system==="5.0"?"selected":""}>5.0 System</option><option value="4.0" ${state.system==="4.0"?"selected":""}>4.0 System</option></select>
+      <div class="mt-5 space-y-3">${state.semesters.length?state.semesters.map((s,i)=>`
+        <div class="border dark:border-slate-700 rounded-2xl p-4"><div class="flex justify-between"><strong>${esc(s.name||"Semester "+(i+1))}</strong><button type="button" data-delete-semester="${s.id}" class="text-red-500 font-bold">Delete</button></div>
+        <div class="grid md:grid-cols-3 gap-3 mt-3"><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">GPA<br><b class="text-2xl">${Number(s.gpa).toFixed(2)}</b></div><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">Units<br><b class="text-2xl">${s.units}</b></div><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">Date<br><b>${esc(s.date)}</b></div></div></div>`).join(""):`<div class="text-center py-10 text-slate-500">No semesters saved yet. Calculate and save a GPA semester first.</div>`}</div>
+      <div class="mt-7 bg-indigo-50 dark:bg-indigo-950 rounded-2xl p-7 text-center"><p class="text-slate-500">Current CGPA</p><div class="text-6xl font-black text-indigo-600 mt-2">${cgpa().toFixed(2)}</div><p class="mt-2">out of ${state.system}</p></div>
+    </div>`);
+}
+function tasksPage(){
+  return shell("Assignments","Keep track of your academic tasks.",`
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
+      <div class="grid md:grid-cols-3 gap-3"><input id="taskTitle" class="input" placeholder="Assignment title"><input id="taskCourse" class="input" placeholder="Course"><input id="taskDate" class="input" type="date"></div>
+      <button type="button" data-add-task class="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black">+ Add Assignment</button>
+    </div>
+    <div class="mt-5 space-y-3">${state.assignments.length?state.assignments.map(a=>`
+      <div class="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
+        <button type="button" data-toggle-task="${a.id}" class="text-2xl">${a.completed?"✅":"⬜"}</button>
+        <div class="flex-1"><b class="${a.completed?"line-through opacity-60":""}">${esc(a.title)}</b><div class="text-sm text-slate-500">${esc(a.course||"General")} · ${esc(a.date||"No date")}</div></div>
+        <button type="button" data-delete-task="${a.id}" class="text-red-500">🗑️</button>
+      </div>`).join(""):`<div class="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 text-slate-500">📝<br>No assignments yet.</div>`}</div>`);
+}
+function timetablePage(){
+  return shell("Timetable","Organize your weekly classes.",`
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
+      <div class="grid md:grid-cols-4 gap-3"><select id="classDay" class="input">${DAYS.map(d=>`<option>${d}</option>`).join("")}</select><input id="classCourse" class="input" placeholder="Course"><input id="classTime" class="input" placeholder="Time e.g. 10:00 AM"><input id="classLocation" class="input" placeholder="Location"></div>
+      <button type="button" data-add-class class="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black">+ Add Class</button>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4 mt-5">${state.timetable.length?state.timetable.map(x=>`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><div class="flex justify-between"><div><b class="text-blue-600">${x.day}</b><h3 class="text-xl font-black">${esc(x.course)}</h3><p class="text-slate-500">${esc(x.time||"Time not added")}</p><p class="text-slate-500">📍 ${esc(x.location||"Location not added")}</p></div><button type="button" data-delete-class="${x.id}" class="text-red-500">🗑️</button></div></div>`).join(""):`<div class="md:col-span-2 text-center py-12 text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800">📅<br>Your timetable is empty.</div>`}</div>`);
+}
+function goalsPage(){
+  return shell("Academic Goals","Set goals and track your progress.",`
+    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 flex gap-2"><input id="goalTitle" class="input" placeholder="e.g. Get 4.5 GPA"><button type="button" data-add-goal class="bg-blue-600 text-white px-5 rounded-xl font-black">Add</button></div>
+    <div class="mt-5 space-y-3">${state.goals.length?state.goals.map(g=>`<div class="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex gap-3 items-center"><button type="button" data-toggle-goal="${g.id}" class="text-xl">${g.completed?"✅":"⬜"}</button><div class="flex-1 font-bold ${g.completed?"line-through opacity-60":""}">${esc(g.title)}</div><button type="button" data-delete-goal="${g.id}" class="text-red-500">🗑️</button></div>`).join(""):`<div class="text-center py-12 text-slate-500">🎯<br>No goals yet.</div>`}</div>`);
+}
+function notesPage(){
+  return shell("Study Notes","Your notes are saved automatically on this device.",`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><textarea id="notesBox" class="input min-h-[320px]" placeholder="Write your study notes here...">${esc(state.notes)}</textarea></div>`);
+}
+function profilePage(){
+  const fields=[["name","Full name"],["school","School / University"],["department","Department"],["level","Level"],["matric","Matric number"]];
+  return shell("Student Profile","Manage your student information.",`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 space-y-4">${fields.map(x=>`<label class="block text-sm font-bold">${x[1]}<input class="input mt-2" data-profile="${x[0]}" value="${esc(state.profile[x[0]])}" placeholder="${x[1]}"></label>`).join("")}<button type="button" data-save-profile class="w-full bg-blue-600 text-white py-3 rounded-xl font-black">Save Profile</button></div>`);
+}
+function settingsPage(){
+  return shell("Settings & Data","Manage your CampusCalc data.",`
+    <div class="space-y-4">
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><b>Appearance</b><br><button type="button" data-action="dark" class="mt-3 bg-slate-100 dark:bg-slate-800 px-5 py-3 rounded-xl font-bold">${state.dark?"☀️ Light mode":"🌙 Dark mode"}</button></div>
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><b>Backup</b><div class="flex flex-wrap gap-3 mt-3"><button type="button" data-export class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold">📤 Export Data</button><label class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold cursor-pointer">📥 Import Data<input id="importFile" type="file" accept=".json,application/json" class="hidden"></label></div></div>
+      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-red-200"><b>Danger zone</b><br><button type="button" data-reset class="mt-3 bg-red-600 text-white px-5 py-3 rounded-xl font-bold">🔄 Reset All Data</button></div>
+    </div>`);
+}
+function morePage(){
+  return shell("More Tools","More ways to organize your student life.",`<div class="grid md:grid-cols-2 gap-4">
+    ${card("📅","Timetable","Organize weekly classes.","timetable")}
+    ${card("🎯","Academic Goals","Set goals and track progress.","goals")}
+    ${card("🗒️","Study Notes","Keep your study notes.","notes")}
+    ${card("👤","Student Profile","Manage your information.","profile")}
+    ${card("⚙️","Settings & Data","Backup, import or reset data.","settings")}
+  </div>`);
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.documentElement.classList.toggle("dark",!!state.dark);
+  let html="";
+  switch(state.page){
+    case "dashboard":html=dashboard();break;
+    case "gpa":html=gpaPage();break;
+    case "cgpa":html=cgpaPage();break;
+    case "tasks":html=tasksPage();break;
+    case "timetable":html=timetablePage();break;
+    case "goals":html=goalsPage();break;
+    case "notes":html=notesPage();break;
+    case "profile":html=profilePage();break;
+    case "settings":html=settingsPage();break;
+    case "more":html=morePage();break;
+    default:state.page="dashboard";html=dashboard();
+  }
+  document.getElementById("app").innerHTML=html;
+  bind();
+}
+
+/* ---------- events: one delegated click handler ---------- */
+function bind(){
+  const app=document.getElementById("app");
+  app.onclick=async function(e){
+    const el=e.target.closest("button,[data-nav],[data-action],[data-system],[data-course],[data-profile],[data-add-course],[data-share-course]");
+    if(!el || !app.contains(el))return;
+
+    const navTarget=el.dataset.nav;
+    if(navTarget){setPage(navTarget);return}
+
+    if(el.dataset.action==="dark"){
+      state.dark=!state.dark;save();render();return;
+    }
+    if(el.dataset.system){
+      state.system=el.dataset.system;save();render();return;
+    }
+    if(el.hasAttribute("data-add-course")){
+      state.courses.push({id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0});
+      save();render();return;
+    }
+    if(el.dataset.removeCourse){
+      state.courses=state.courses.filter(c=>c.id!==el.dataset.removeCourse);
+      if(!state.courses.length)state.courses.push({id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0});
+      save();render();return;
+    }
+    if(el.dataset.shareCourse){
+      const c=state.courses.find(x=>x.id===el.dataset.shareCourse);
+      if(c){
+        const text=`${c.name||c.code||"My class"}${c.code&&c.name?" ("+c.code+")":""}\nRating: ${c.rating||0}/5\nShared from CampusCalc.ng`;
+        try{
+          if(navigator.share)await navigator.share({title:"CampusCalc Class",text});
+          else await navigator.clipboard.writeText(text);
+          c.shares=(Number(c.shares)||0)+1;save();toast("Class shared!");
+        }catch(e){}
+      }
+      return;
+    }
+    if(el.dataset.saveSemester){
+      const units=state.courses.reduce((a,c)=>a+(Number(c.unit)||0),0);
+      if(!units){toast("Add course units first.");return}
+      state.semesters.push({id:uid(),name:"Semester "+(state.semesters.length+1),gpa:gpa(),units,system:state.system,date:new Date().toLocaleDateString()});
+      save();toast("Semester saved!");setPage("cgpa");return;
+    }
+    if(el.dataset.deleteSemester){
+      state.semesters=state.semesters.filter(x=>x.id!==el.dataset.deleteSemester);save();render();return;
+    }
+    if(el.dataset.addTask){
+      const title=document.getElementById("taskTitle").value.trim();
+      if(!title){toast("Enter an assignment title.");return}
+      state.assignments.push({id:uid(),title,course:document.getElementById("taskCourse").value.trim(),date:document.getElementById("taskDate").value,completed:false});
+      save();render();toast("Assignment added!");return;
+    }
+    if(el.dataset.toggleTask){const x=state.assignments.find(a=>a.id===el.dataset.toggleTask);if(x)x.completed=!x.completed;save();render();return}
+    if(el.dataset.deleteTask){state.assignments=state.assignments.filter(a=>a.id!==el.dataset.deleteTask);save();render();return}
+    if(el.dataset.addClass){
+      const course=document.getElementById("classCourse").value.trim();
+      if(!course){toast("Enter a course.");return}
+      state.timetable.push({id:uid(),day:document.getElementById("classDay").value,course,time:document.getElementById("classTime").value,location:document.getElementById("classLocation").value.trim()});
+      save();render();toast("Class added!");return;
+    }
+    if(el.dataset.deleteClass){state.timetable=state.timetable.filter(x=>x.id!==el.dataset.deleteClass);save();render();return}
+    if(el.dataset.addGoal){
+      const title=document.getElementById("goalTitle").value.trim();
+      if(!title){toast("Enter a goal.");return}
+      state.goals.push({id:uid(),title,completed:false});save();render();toast("Goal added!");return;
+    }
+    if(el.dataset.toggleGoal){const x=state.goals.find(g=>g.id===el.dataset.toggleGoal);if(x)x.completed=!x.completed;save();render();return}
+    if(el.dataset.deleteGoal){state.goals=state.goals.filter(g=>g.id!==el.dataset.deleteGoal);save();render();return}
+    if(el.dataset.saveProfile){save();toast("Profile saved!");setPage("dashboard");return}
+    if(el.dataset.export){
+      const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=url;a.download="campuscalc-backup.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast("Backup exported!");return;
+    }
+    if(el.dataset.reset){
+      if(confirm("Delete all CampusCalc data from this device?")){
+        localStorage.removeItem(KEY);state=load();render();toast("Data reset.");
+      }
+      return;
+    }
+  };
+
+  app.oninput=function(e){
+    const el=e.target;
+    if(el.dataset.course){
+      const c=state.courses.find(x=>x.id===el.dataset.course);
+      if(c){c[el.dataset.field]=el.value;save();}
+      if(el.dataset.field==="unit"||el.dataset.field==="grade"||el.dataset.field==="rating")render();
+      return;
+    }
+    if(el.dataset.profile){
+      state.profile[el.dataset.profile]=el.value;save();return;
+    }
+    if(el.id==="notesBox"){state.notes=el.value;save();return}
+  };
+  app.onchange=function(e){
+    const el=e.target;
+    if(el.dataset.systemSelect){state.system=el.value;save();render();return}
+    if(el.id==="importFile"&&el.files[0]){
+      const reader=new FileReader();
+      reader.onload=()=>{try{const d=JSON.parse(reader.result);state={...state,...d,page:"settings"};save();render();toast("Backup imported!")}catch(e){toast("Invalid backup file.")}};
+      reader.readAsText(el.files[0]);
+    }
+    if(el.dataset.course){
+      const c=state.courses.find(x=>x.id===el.dataset.course);
+      if(c){c[el.dataset.field]=el.value;save();render();}
+    }
+  };
+}
+
+render();
 </script>
-
 </body>
 </html>
