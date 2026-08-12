@@ -1,0 +1,13 @@
+{
+  "name":"CampusCalc — Student Academic Toolkit",
+  "short_name":"CampusCalc",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f8fafc",
+  "theme_color":"#2563eb",
+  "description":"GPA, CGPA, courses, assignments, timetable, goals and study notes.",
+  "icons":[
+    {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
