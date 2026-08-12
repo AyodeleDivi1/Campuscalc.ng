@@ -1,488 +1,1235 @@
-
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CampusCalc — Student Academic Toolkit</title>
-<meta name="description" content="CampusCalc — GPA, CGPA, courses, assignments, timetable, goals and study notes.">
-<meta name="theme-color" content="#2563eb">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="CampusCalc">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="CampusCalc — a professional student GPA and CGPA calculator with academic tools.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CampusCalc">
+  <title>CampusCalc — Student Academic Toolkit</title>
 
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: "class" };
+  </script>
 
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-4HK7BD7MSQ"></script>
-<script>
-window.dataLayer=window.dataLayer||[];
-function gtag(){dataLayer.push(arguments);}
-gtag("js",new Date());
-gtag("config","G-4HK7BD7MSQ");
-</script>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={darkMode:"class"};</script>
-<style>
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-button,input,select,textarea{font:inherit}
-button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.safe-bottom{padding-bottom:env(safe-area-inset-bottom)}
-.input{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#fff;color:#0f172a;outline:none}
-.input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-.dark .input{background:#0f172a;border-color:#475569;color:#f8fafc}
-</style>
-
-<style>
-#connectionStatus{position:fixed;top:72px;right:12px;z-index:9997;font-size:11px;font-weight:800;padding:6px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(15,23,42,.12);display:none}
-#connectionStatus.online{background:#dcfce7;color:#166534}
-#connectionStatus.offline{background:#fef3c7;color:#92400e}
-</style>
-
-<style>
-@media(max-width:767px){
-  header .max-w-7xl{padding-left:12px;padding-right:12px}
-  main{padding-left:12px!important;padding-right:12px!important}
-  .max-w-2xl{max-width:100%}
-  nav button{min-height:62px!important}
-  nav button .text-xl{font-size:18px}
-  .bg-gradient-to-br{border-radius:20px!important;padding:20px!important}
-  .text-3xl{font-size:25px}
-  .text-6xl{font-size:48px}
-}
-</style>
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    .input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: #0f172a;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .dark .input {
+      background: #0f172a;
+      border-color: #334155;
+      color: #f8fafc;
+    }
+    .dark .input:focus { border-color: #60a5fa; }
+    .app-card { transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .app-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
+    .dark .app-card:hover { box-shadow: 0 12px 30px rgba(0,0,0,.22); }
+    .nav-btn { min-height: 64px; }
+    @media (max-width: 767px) {
+      main { padding-left: 14px !important; padding-right: 14px !important; }
+      .hero-title { font-size: 2rem; line-height: 1.1; }
+      .big-number { font-size: 3.25rem; }
+    }
+  </style>
 </head>
 
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-<div id="app"></div><div id="connectionStatus" aria-live="polite"></div>
+  <div id="app"></div>
+  <div id="toast" class="hidden fixed left-1/2 bottom-24 -translate-x-1/2 z-[10000] rounded-xl bg-slate-950 text-white px-5 py-3 shadow-2xl text-sm font-bold"></div>
 
 <script>
 "use strict";
 
-/* ---------- storage ---------- */
-const KEY="campuscalc_stable_v1";
-const GRADE_POINTS={
-  "5.0":{A:5,B:4,C:3,D:2,E:1,F:0},
-  "4.0":{A:4,B:3,C:2,D:1,F:0},
-  "custom":{A:5,B:4,C:3,D:2,E:1,F:0}
-};
-const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+/* =========================
+   CampusCalc — stable v2
+   ========================= */
 
-function uid(){return Date.now()+"_"+Math.random().toString(36).slice(2,9)}
-function load(){
-  try{
-    const x=JSON.parse(localStorage.getItem(KEY)||"null");
-    if(x)return x;
-  }catch(e){}
+const STORAGE_KEY = "campuscalc_stable_v2";
+
+const GRADE_POINTS = {
+  "5.0": { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 },
+  "4.0": { A: 4, B: 3, C: 2, D: 1, F: 0 }
+};
+
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+function uid() {
+  return Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9);
+}
+
+function defaultState() {
   return {
-    page:"dashboard",dark:false,system:"5.0",
-    profile:{name:"",school:"",department:"",level:"",matric:""},
-    courses:[{id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0}],
-    semesters:[],assignments:[],timetable:[],goals:[],notes:""
+    page: "dashboard",
+    dark: false,
+    system: "5.0",
+    profile: { name: "", school: "", department: "", level: "", matric: "" },
+    courses: [],
+    semesters: [],
+    assignments: [],
+    timetable: [],
+    goals: [],
+    notes: "",
+    feedbackDraft: { type: "Suggestion", message: "" }
   };
 }
-let state=load();
 
-function save(){
-  try{
-    localStorage.setItem(KEY,JSON.stringify(state));
-  }catch(e){}
+function normalizeState(data) {
+  const base = defaultState();
+  const merged = { ...base, ...(data || {}) };
+  merged.profile = { ...base.profile, ...(data?.profile || {}) };
+  merged.feedbackDraft = { ...base.feedbackDraft, ...(data?.feedbackDraft || {}) };
+  merged.courses = Array.isArray(data?.courses) ? data.courses : [];
+  merged.semesters = Array.isArray(data?.semesters) ? data.semesters : [];
+  merged.assignments = Array.isArray(data?.assignments) ? data.assignments : [];
+  merged.timetable = Array.isArray(data?.timetable) ? data.timetable : [];
+  merged.goals = Array.isArray(data?.goals) ? data.goals : [];
+  if (!["5.0","4.0"].includes(merged.system)) merged.system = "5.0";
+  return merged;
 }
-function setPage(page){
-  state.page=page;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return normalizeState(JSON.parse(raw));
+  } catch (_) {}
+  return defaultState();
+}
+
+let state = loadState();
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (_) {
+    showToast("Could not save data on this device.");
+  }
+}
+
+function showToast(message) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.remove("hidden");
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => el.classList.add("hidden"), 2400);
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+  }[ch]));
+}
+
+function setPage(page) {
+  state.page = page;
   save();
   render();
-  window.scrollTo(0,0);
-}
-function toast(msg){
-  const old=document.getElementById("toast");
-  if(old)old.remove();
-  const el=document.createElement("div");
-  el.id="toast";
-  el.className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[10000] bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl font-bold text-sm";
-  el.textContent=msg;
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),2200);
-}
-function esc(v){
-  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-}
-function gpa(){
-  let p=0,u=0;
-  state.courses.forEach(c=>{
-    const units=Math.max(0,Number(c.unit)||0);
-    p+=units*(GRADE_POINTS[state.system]?.[c.grade]??0);
-    u+=units;
-  });
-  return u?+(p/u).toFixed(2):0;
-}
-function cgpa(){
-  let p=0,u=0;
-  state.semesters.forEach(s=>{
-    const units=Math.max(0,Number(s.units)||0);
-    p+=units*(Number(s.gpa)||0); u+=units;
-  });
-  return u?+(p/u).toFixed(2):0;
-}
-function rating(x){
-  const r=x/Number(state.system);
-  return !x?"Enter your courses":r>=.8?"Excellent 🎉":r>=.7?"Very Good 👍":r>=.6?"Good":r>=.5?"Fair":"Keep improving 💪";
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-/* ---------- layout ---------- */
-function nav(){
-  const items=[
-    ["🏠","Home","dashboard"],["📊","GPA","gpa"],["🎯","CGPA","cgpa"],
-    ["📝","Tasks","tasks"],["📚","More","more"]
+function pointsForGrade(grade) {
+  return GRADE_POINTS[state.system]?.[grade] ?? 0;
+}
+
+function calculateGPA(courses = state.courses) {
+  let quality = 0;
+  let units = 0;
+
+  courses.forEach(course => {
+    const u = Math.max(0, Number(course.unit) || 0);
+    quality += u * pointsForGrade(course.grade);
+    units += u;
+  });
+
+  return units ? Number((quality / units).toFixed(2)) : 0;
+}
+
+function calculateCGPA() {
+  let quality = 0;
+  let units = 0;
+
+  state.semesters.forEach(semester => {
+    const u = Math.max(0, Number(semester.units) || 0);
+    const g = Math.max(0, Number(semester.gpa) || 0);
+    quality += u * g;
+    units += u;
+  });
+
+  return units ? Number((quality / units).toFixed(2)) : 0;
+}
+
+function currentSemesterUnits() {
+  return state.courses.reduce((sum, c) => sum + Math.max(0, Number(c.unit) || 0), 0);
+}
+
+function performanceText(score) {
+  if (!currentSemesterUnits()) return "Add your courses to calculate your GPA.";
+  const ratio = score / Number(state.system);
+  if (ratio >= .8) return "Excellent performance.";
+  if (ratio >= .7) return "Very good performance.";
+  if (ratio >= .6) return "Good performance.";
+  if (ratio >= .5) return "Fair performance.";
+  return "Keep working — you can improve.";
+}
+
+function gradeOptions(selected) {
+  return Object.keys(GRADE_POINTS[state.system] || {}).map(g =>
+    `<option value="${g}" ${selected === g ? "selected" : ""}>${g}</option>`
+  ).join("");
+}
+
+/* ---------- shared UI ---------- */
+
+function header() {
+  return `
+    <header class="sticky top-0 z-[9000] bg-slate-950 text-white border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <button type="button" data-nav="dashboard" class="font-black text-xl tracking-tight">
+          Campus<span class="text-blue-400">Calc</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          ${state.page !== "dashboard" ? `
+            <button type="button" data-nav="dashboard"
+              class="hidden sm:inline-flex px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-sm">
+              Home
+            </button>` : ""}
+          <button type="button" data-action="toggle-dark"
+            class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700" aria-label="Toggle dark mode">
+            ${state.dark ? "☀️" : "🌙"}
+          </button>
+          <button type="button" data-nav="profile"
+            class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700" aria-label="Profile">
+            👤
+          </button>
+        </div>
+      </div>
+    </header>
+  `;
+}
+
+function bottomNav() {
+  const items = [
+    ["dashboard", "Home", "⌂"],
+    ["cgpa", "CGPA", "◎"],
+    ["gpa", "GPA", "Σ"],
+    ["tasks", "Tasks", "✓"],
+    ["more", "More", "•••"]
   ];
-  return `<nav class="fixed bottom-0 left-0 right-0 z-[9999] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shadow-lg safe-bottom">
-    <div class="max-w-2xl mx-auto grid grid-cols-5">
-      ${items.map(x=>`<button type="button" data-nav="${x[2]}" class="min-h-[66px] w-full flex flex-col items-center justify-center text-xs font-bold ${state.page===x[2]?"text-blue-600":"text-slate-500 dark:text-slate-400"}">
-        <span class="text-xl">${x[0]}</span><span>${x[1]}</span>
-      </button>`).join("")}
-    </div>
-  </nav>`;
-}
-function header(){
-  return `<header class="sticky top-0 z-[9998] bg-blue-700 text-white shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
-        ${state.page!=="dashboard"?`<button type="button" data-nav="dashboard" class="bg-blue-600 rounded-xl px-3 py-2 text-lg font-black">←</button>`:""}
-        <button type="button" data-nav="dashboard" class="text-xl font-black">Campus<span class="text-blue-200">Calc</span><span class="text-xs ml-1 text-blue-200"></span></button>
+
+  return `
+    <nav class="fixed bottom-0 left-0 right-0 z-[8999] bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 safe-bottom">
+      <div class="max-w-2xl mx-auto grid grid-cols-5">
+        ${items.map(([page,label,icon]) => `
+          <button type="button" data-nav="${page}"
+            class="nav-btn flex flex-col items-center justify-center gap-1 text-xs font-bold
+            ${state.page === page ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}">
+            <span class="text-lg leading-none">${icon}</span>
+            <span>${label}</span>
+          </button>
+        `).join("")}
       </div>
-      <div class="flex gap-2">
-        <button type="button" data-action="dark" class="bg-blue-600 rounded-xl px-3 py-2">${state.dark?"☀️":"🌙"}</button>
-        <button type="button" data-nav="profile" class="bg-blue-600 rounded-xl px-3 py-2">👤</button>
-      </div>
-    </div>
-  </header>`;
-}
-function shell(title,sub,content){
-  return `${header()}<main class="max-w-6xl mx-auto px-4 py-7 pb-28">
-    <div class="mb-6 flex items-start gap-3">
-      ${state.page!=="dashboard"?`<button type="button" data-nav="dashboard" class="border dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl font-black shadow-sm">← Back</button>`:""}
-      <div><h1 class="text-3xl font-black">${title}</h1><p class="text-slate-500 dark:text-slate-400 mt-1">${sub}</p></div>
-    </div>${content}
-  </main>${nav()}`;
-}
-function card(icon,title,text,target){
-  return `<button type="button" data-nav="${target}" class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 shadow-sm hover:shadow-md w-full">
-    <div class="text-3xl">${icon}</div><h3 class="font-black text-lg mt-3">${title}</h3><p class="text-sm text-slate-500 mt-1">${text}</p>
-  </button>`;
+    </nav>
+  `;
 }
 
-/* ---------- pages ---------- */
-function dashboard(){
-  return `${header()}<main class="max-w-7xl mx-auto px-4 py-7 pb-28">
-    <section class="bg-gradient-to-br from-blue-700 via-indigo-700 to-purple-700 rounded-3xl p-6 md:p-10 text-white shadow-xl">
-      <p class="text-blue-200">Welcome back 👋</p>
-      <h1 class="text-3xl md:text-5xl font-black mt-2">${esc(state.profile.name||"Student")}</h1>
-      <p class="mt-3 text-blue-100">${esc(state.profile.school||"Your academic dashboard")}</p>
-      <button type="button" data-nav="gpa" class="mt-6 bg-white text-blue-700 font-black px-6 py-3 rounded-xl">Calculate GPA →</button>
-    </section>
-    <section class="grid md:grid-cols-3 gap-4 mt-6">
-      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">📊</div><div class="text-sm text-slate-500 mt-2">Current GPA</div><div class="text-3xl font-black">${gpa().toFixed(2)}</div><div class="text-xs text-slate-500">out of ${state.system}</div></div>
-      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">🎯</div><div class="text-sm text-slate-500 mt-2">CGPA</div><div class="text-3xl font-black">${cgpa().toFixed(2)}</div><div class="text-xs text-slate-500">out of ${state.system}</div></div>
-      <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800"><div class="text-2xl">📚</div><div class="text-sm text-slate-500 mt-2">Semesters</div><div class="text-3xl font-black">${state.semesters.length}</div><div class="text-xs text-slate-500">saved</div></div>
-    </section>
-    <section class="grid md:grid-cols-2 gap-5 mt-6">
-      ${card("📊","GPA Calculator","Calculate your semester GPA.","gpa")}
-      ${card("🎯","CGPA Calculator","Track your cumulative GPA.","cgpa")}
-      ${card("📝","Assignments",`${state.assignments.filter(x=>!x.completed).length} pending tasks`,"tasks")}
-      ${card("📅","Timetable","Organize your classes.","timetable")}
-    </section>
-    <section class="mt-6 bg-white dark:bg-slate-900 rounded-2xl p-6 border dark:border-slate-800">
-      <h2 class="text-xl font-black">Academic Rating</h2><p class="text-slate-500 mt-1">${rating(gpa())}</p>
-    </section>
-  </main>${nav()}`;
+function shell(title, subtitle, content) {
+  return `
+    ${header()}
+    <main class="max-w-6xl mx-auto px-4 py-7 pb-28">
+      <div class="mb-7">
+        <button type="button" data-nav="dashboard"
+          class="mb-4 text-sm font-bold text-slate-500 hover:text-blue-600">
+          ← Back to Home
+        </button>
+        <h1 class="text-3xl md:text-4xl font-black tracking-tight">${title}</h1>
+        <p class="mt-1 text-slate-500 dark:text-slate-400">${subtitle}</p>
+      </div>
+      ${content}
+    </main>
+    ${bottomNav()}
+  `;
 }
 
-function gpaPage(){
-  const grades=Object.keys(GRADE_POINTS[state.system]);
-  return shell("GPA Calculator","Calculate your semester GPA.",`
-    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-      <div class="flex gap-2 mb-6">
-        ${["5.0","4.0","custom"].map(s=>`<button type="button" data-system="${s}" class="flex-1 py-3 rounded-xl font-black ${state.system===s?"bg-blue-600 text-white":"bg-slate-100 dark:bg-slate-800"}">${s==="custom"?"Custom":s+" System"}</button>`).join("")}
-      </div>
-      <div class="space-y-4">
-      ${state.courses.map((c,i)=>`
-        <div class="border dark:border-slate-700 rounded-2xl p-4">
-          <div class="flex justify-between mb-3"><strong>Course ${i+1}</strong><button type="button" data-remove-course="${c.id}" class="text-red-500 font-bold">Remove</button></div>
-          <div class="grid md:grid-cols-5 gap-3">
-            <input class="input" data-course="${c.id}" data-field="code" value="${esc(c.code)}" placeholder="Course code">
-            <input class="input" data-course="${c.id}" data-field="name" value="${esc(c.name)}" placeholder="Course name">
-            <input class="input" type="number" min="0" max="30" data-course="${c.id}" data-field="unit" value="${esc(c.unit)}" placeholder="Units">
-            <select class="input" data-course="${c.id}" data-field="grade">${grades.map(g=>`<option ${c.grade===g?"selected":""}>${g}</option>`).join("")}</select>
-            <input class="input" type="number" min="0" max="5" step=".1" data-course="${c.id}" data-field="rating" value="${esc(c.rating)}" placeholder="Rate /5">
+function card(icon, title, description, target) {
+  return `
+    <button type="button" data-nav="${target}"
+      class="app-card text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 w-full">
+      <div class="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xl">${icon}</div>
+      <h3 class="font-black text-lg mt-4">${title}</h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${description}</p>
+      <span class="inline-block mt-4 text-sm font-bold text-blue-600 dark:text-blue-400">Open →</span>
+    </button>
+  `;
+}
+
+/* ---------- dashboard ---------- */
+
+function dashboardPage() {
+  const gpa = calculateGPA();
+  const cgpa = calculateCGPA();
+  const pending = state.assignments.filter(a => !a.completed).length;
+
+  return `
+    ${header()}
+    <main class="max-w-7xl mx-auto px-4 py-7 pb-28">
+      <section class="bg-slate-950 rounded-3xl p-6 md:p-10 text-white shadow-xl border border-slate-800">
+        <p class="text-blue-400 font-bold text-sm">STUDENT ACADEMIC TOOLKIT</p>
+        <h1 class="hero-title text-4xl md:text-5xl font-black mt-2">
+          ${esc(state.profile.name || "Welcome to CampusCalc")}
+        </h1>
+        <p class="mt-3 text-slate-300 max-w-2xl">
+          Calculate your GPA, track your CGPA and manage the academic essentials that matter.
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <button type="button" data-nav="cgpa"
+            class="bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-black">
+            Open CGPA Calculator
+          </button>
+          <button type="button" data-nav="gpa"
+            class="bg-white text-slate-950 hover:bg-slate-100 px-5 py-3 rounded-xl font-black">
+            Calculate GPA
+          </button>
+        </div>
+      </section>
+
+      <section class="grid md:grid-cols-3 gap-4 mt-6">
+        <button type="button" data-nav="cgpa"
+          class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
+          <p class="text-sm text-slate-500">Current CGPA</p>
+          <div class="text-4xl font-black mt-2">${cgpa.toFixed(2)}</div>
+          <p class="text-xs text-slate-500 mt-1">out of ${state.system}</p>
+        </button>
+
+        <button type="button" data-nav="gpa"
+          class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
+          <p class="text-sm text-slate-500">Current GPA</p>
+          <div class="text-4xl font-black mt-2">${gpa.toFixed(2)}</div>
+          <p class="text-xs text-slate-500 mt-1">current semester</p>
+        </button>
+
+        <button type="button" data-nav="cgpa"
+          class="text-left bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
+          <p class="text-sm text-slate-500">Saved Semesters</p>
+          <div class="text-4xl font-black mt-2">${state.semesters.length}</div>
+          <p class="text-xs text-slate-500 mt-1">used for CGPA</p>
+        </button>
+      </section>
+
+      <section class="mt-8">
+        <div class="flex items-end justify-between mb-4">
+          <div>
+            <h2 class="text-2xl font-black">Academic Tools</h2>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Everything important, without unnecessary clutter.</p>
           </div>
-          <div class="mt-3 flex flex-wrap items-center gap-3">
-            <span class="text-sm text-slate-500">⭐ ${Number(c.rating||0).toFixed(1)}/5</span>
-            <button type="button" data-share-course="${c.id}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold">📤 Share Class</button>
-            <span class="text-xs text-slate-500">Shared ${Number(c.shares)||0} time${Number(c.shares)===1?"":"s"}</span>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${card("◎", "CGPA Calculator", "Track your cumulative performance across semesters.", "cgpa")}
+          ${card("Σ", "GPA Calculator", "Calculate your current semester GPA.", "gpa")}
+          ${card("✓", "Assignments", `${pending} pending ${pending === 1 ? "task" : "tasks"}.`, "tasks")}
+          ${card("▦", "Timetable", "Organize your weekly classes.", "timetable")}
+          ${card("★", "Academic Goals", "Set simple goals and track them.", "goals")}
+          ${card("?", "Feedback", "Tell us what works and what needs fixing.", "feedback")}
+        </div>
+      </section>
+
+      <section class="mt-6 bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800">
+        <p class="text-sm text-slate-500">Current semester performance</p>
+        <h2 class="text-xl font-black mt-1">${performanceText(gpa)}</h2>
+      </section>
+    </main>
+    ${bottomNav()}
+  `;
+}
+
+/* ---------- CGPA: primary feature ---------- */
+
+function cgpaPage() {
+  const cgpa = calculateCGPA();
+
+  return shell(
+    "CGPA Calculator",
+    "Your main academic dashboard — save semesters and track your cumulative GPA.",
+    `
+      <div class="grid lg:grid-cols-[1fr_340px] gap-5">
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+            <div>
+              <h2 class="text-xl font-black">Saved Semesters</h2>
+              <p class="text-sm text-slate-500 mt-1">Each semester contributes according to its credit units.</p>
+            </div>
+            <select id="cgpaSystem" class="input sm:w-44">
+              <option value="5.0" ${state.system === "5.0" ? "selected" : ""}>5.0 System</option>
+              <option value="4.0" ${state.system === "4.0" ? "selected" : ""}>4.0 System</option>
+            </select>
           </div>
-        </div>`).join("")}
+
+          ${state.semesters.length ? `
+            <div class="space-y-3">
+              ${state.semesters.map((s, i) => `
+                <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-xs text-slate-500">Semester ${i + 1}</p>
+                      <h3 class="font-black text-lg">${esc(s.name || "Semester " + (i + 1))}</h3>
+                    </div>
+                    <button type="button" data-delete-semester="${s.id}"
+                      class="text-sm font-bold text-red-600 hover:text-red-700">Delete</button>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2 mt-4">
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                      <p class="text-xs text-slate-500">GPA</p>
+                      <p class="font-black text-xl">${Number(s.gpa).toFixed(2)}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                      <p class="text-xs text-slate-500">Units</p>
+                      <p class="font-black text-xl">${Number(s.units)}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+                      <p class="text-xs text-slate-500">Date</p>
+                      <p class="font-bold text-sm mt-1">${esc(s.date || "—")}</p>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          ` : `
+            <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 py-14 text-center">
+              <div class="text-3xl">◎</div>
+              <h3 class="font-black mt-3">No semesters saved yet</h3>
+              <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+                Calculate your current semester GPA, then save it here to build your CGPA.
+              </p>
+              <button type="button" data-nav="gpa"
+                class="mt-5 bg-blue-600 text-white px-5 py-3 rounded-xl font-black">
+                Calculate a GPA
+              </button>
+            </div>
+          `}
+        </section>
+
+        <aside class="bg-slate-950 text-white rounded-2xl p-6 h-fit">
+          <p class="text-blue-400 text-sm font-bold">CURRENT CGPA</p>
+          <div class="big-number text-6xl font-black mt-2">${cgpa.toFixed(2)}</div>
+          <p class="text-slate-400 mt-1">out of ${state.system}</p>
+
+          <div class="h-px bg-slate-800 my-5"></div>
+
+          <div class="flex justify-between text-sm">
+            <span class="text-slate-400">Semesters</span>
+            <strong>${state.semesters.length}</strong>
+          </div>
+          <div class="flex justify-between text-sm mt-3">
+            <span class="text-slate-400">Total units</span>
+            <strong>${state.semesters.reduce((n, s) => n + (Number(s.units) || 0), 0)}</strong>
+          </div>
+
+          <button type="button" data-nav="gpa"
+            class="w-full mt-6 bg-blue-600 hover:bg-blue-500 px-5 py-3 rounded-xl font-black">
+            Add Current Semester
+          </button>
+        </aside>
       </div>
-      <button type="button" data-add-course class="w-full mt-5 bg-emerald-600 text-white py-3 rounded-xl font-black">+ Add Course</button>
-      <div class="mt-7 bg-blue-50 dark:bg-blue-950 rounded-2xl p-7 text-center">
-        <p class="text-slate-500">Your GPA</p><div class="text-6xl font-black text-blue-600 mt-2">${gpa().toFixed(2)}</div>
-        <p class="mt-2">${rating(gpa())} · / ${state.system}</p>
-        <button type="button" data-save-semester class="mt-5 bg-blue-600 text-white px-6 py-3 rounded-xl font-black">💾 Save Semester</button>
-        <button type="button" data-export-pdf class="mt-3 bg-indigo-600 text-white px-6 py-3 rounded-xl font-black">📄 Export PDF</button>
-      </div>
-    </div>`);
-}
-function cgpaPage(){
-  return shell("CGPA Calculator","Track your academic performance across semesters.",`
-    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-      <label class="text-sm font-bold">Grading system</label>
-      <select class="input mt-2" data-system-select><option value="5.0" ${state.system==="5.0"?"selected":""}>5.0 System</option><option value="4.0" ${state.system==="4.0"?"selected":""}>4.0 System</option><option value="custom" ${state.system==="custom"?"selected":""}>Custom 5-point-style System</option></select>
-      <div class="mt-5 space-y-3">${state.semesters.length?state.semesters.map((s,i)=>`
-        <div class="border dark:border-slate-700 rounded-2xl p-4"><div class="flex justify-between"><strong>${esc(s.name||"Semester "+(i+1))}</strong><button type="button" data-delete-semester="${s.id}" class="text-red-500 font-bold">Delete</button></div>
-        <div class="grid md:grid-cols-3 gap-3 mt-3"><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">GPA<br><b class="text-2xl">${Number(s.gpa).toFixed(2)}</b></div><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">Units<br><b class="text-2xl">${s.units}</b></div><div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">Date<br><b>${esc(s.date)}</b></div></div></div>`).join(""):`<div class="text-center py-10 text-slate-500">No semesters saved yet. Calculate and save a GPA semester first.</div>`}</div>
-      <div class="mt-7 bg-indigo-50 dark:bg-indigo-950 rounded-2xl p-7 text-center"><p class="text-slate-500">Current CGPA</p><div class="text-6xl font-black text-indigo-600 mt-2">${cgpa().toFixed(2)}</div><p class="mt-2">out of ${state.system}</p></div>
-    </div>`);
-}
-function tasksPage(){
-  return shell("Assignments","Keep track of your academic tasks.",`
-    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-      <div class="grid md:grid-cols-3 gap-3"><input id="taskTitle" class="input" placeholder="Assignment title"><input id="taskCourse" class="input" placeholder="Course"><input id="taskDate" class="input" type="date"></div>
-      <button type="button" data-add-task class="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black">+ Add Assignment</button>
-    </div>
-    <div class="mt-5 space-y-3">${state.assignments.length?state.assignments.map(a=>`
-      <div class="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3">
-        <button type="button" data-toggle-task="${a.id}" class="text-2xl">${a.completed?"✅":"⬜"}</button>
-        <div class="flex-1"><b class="${a.completed?"line-through opacity-60":""}">${esc(a.title)}</b><div class="text-sm text-slate-500">${esc(a.course||"General")} · ${esc(a.date||"No date")}</div></div>
-        <button type="button" data-delete-task="${a.id}" class="text-red-500">🗑️</button>
-      </div>`).join(""):`<div class="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 text-slate-500">📝<br>No assignments yet.</div>`}</div>`);
-}
-function timetablePage(){
-  return shell("Timetable","Organize your weekly classes.",`
-    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800">
-      <div class="grid md:grid-cols-4 gap-3"><select id="classDay" class="input">${DAYS.map(d=>`<option>${d}</option>`).join("")}</select><input id="classCourse" class="input" placeholder="Course"><input id="classTime" class="input" placeholder="Time e.g. 10:00 AM"><input id="classLocation" class="input" placeholder="Location"></div>
-      <button type="button" data-add-class class="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black">+ Add Class</button>
-    </div>
-    <div class="grid md:grid-cols-2 gap-4 mt-5">${state.timetable.length?state.timetable.map(x=>`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><div class="flex justify-between"><div><b class="text-blue-600">${x.day}</b><h3 class="text-xl font-black">${esc(x.course)}</h3><p class="text-slate-500">${esc(x.time||"Time not added")}</p><p class="text-slate-500">📍 ${esc(x.location||"Location not added")}</p></div><button type="button" data-delete-class="${x.id}" class="text-red-500">🗑️</button></div></div>`).join(""):`<div class="md:col-span-2 text-center py-12 text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800">📅<br>Your timetable is empty.</div>`}</div>`);
-}
-function goalsPage(){
-  return shell("Academic Goals","Set goals and track your progress.",`
-    <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 flex gap-2"><input id="goalTitle" class="input" placeholder="e.g. Get 4.5 GPA"><button type="button" data-add-goal class="bg-blue-600 text-white px-5 rounded-xl font-black">Add</button></div>
-    <div class="mt-5 space-y-3">${state.goals.length?state.goals.map(g=>`<div class="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-2xl p-4 flex gap-3 items-center"><button type="button" data-toggle-goal="${g.id}" class="text-xl">${g.completed?"✅":"⬜"}</button><div class="flex-1 font-bold ${g.completed?"line-through opacity-60":""}">${esc(g.title)}</div><button type="button" data-delete-goal="${g.id}" class="text-red-500">🗑️</button></div>`).join(""):`<div class="text-center py-12 text-slate-500">🎯<br>No goals yet.</div>`}</div>`);
-}
-function notesPage(){
-  return shell("Study Notes","Your notes are saved automatically on this device.",`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><textarea id="notesBox" class="input min-h-[320px]" placeholder="Write your study notes here...">${esc(state.notes)}</textarea></div>`);
-}
-function profilePage(){
-  const fields=[["name","Full name"],["school","School / University"],["department","Department"],["level","Level"],["matric","Matric number"]];
-  return shell("Student Profile","Manage your student information.",`<div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800 space-y-4">${fields.map(x=>`<label class="block text-sm font-bold">${x[1]}<input class="input mt-2" data-profile="${x[0]}" value="${esc(state.profile[x[0]])}" placeholder="${x[1]}"></label>`).join("")}<button type="button" data-save-profile class="w-full bg-blue-600 text-white py-3 rounded-xl font-black">Save Profile</button></div>`);
-}
-function settingsPage(){
-  return shell("Settings & Data","Manage your CampusCalc data.",`
-    <div class="space-y-4">
-      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><b>Appearance</b><br><button type="button" data-action="dark" class="mt-3 bg-slate-100 dark:bg-slate-800 px-5 py-3 rounded-xl font-bold">${state.dark?"☀️ Light mode":"🌙 Dark mode"}</button></div>
-      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border dark:border-slate-800"><b>Backup</b><div class="flex flex-wrap gap-3 mt-3"><button type="button" data-export class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold">📤 Export Data</button><label class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold cursor-pointer">📥 Import Data<input id="importFile" type="file" accept=".json,application/json" class="hidden"></label></div></div>
-      <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-red-200"><b>Danger zone</b><br><button type="button" data-reset class="mt-3 bg-red-600 text-white px-5 py-3 rounded-xl font-bold">🔄 Reset All Data</button></div>
-    </div>`);
-}
-function morePage(){
-  return shell("More Tools","More ways to organize your student life.",`<div class="grid md:grid-cols-2 gap-4">
-    ${card("📅","Timetable","Organize weekly classes.","timetable")}
-    ${card("🎯","Academic Goals","Set goals and track progress.","goals")}
-    ${card("🗒️","Study Notes","Keep your study notes.","notes")}
-    ${card("👤","Student Profile","Manage your information.","profile")}
-    ${card("⚙️","Settings & Data","Backup, import or reset data.","settings")}
-  </div>`);
+    `
+  );
 }
 
+/* ---------- GPA ---------- */
 
-function exportPDF(){
-  const profile=state.profile||{};
-  const rows=state.courses.map(c=>`
-    <tr><td>${esc(c.code||"—")}</td><td>${esc(c.name||"—")}</td>
-    <td>${Number(c.unit)||0}</td><td>${esc(c.grade||"—")}</td></tr>`).join("");
-  const w=window.open("","_blank");
-  if(!w){toast("Allow pop-ups to export PDF.");return}
-  w.document.write(`<!doctype html><html><head><title>CampusCalc Result</title>
-  <style>
-  body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{color:#2563eb;margin-bottom:4px}
-  .muted{color:#64748b}table{width:100%;border-collapse:collapse;margin-top:24px}
-  th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#eff6ff}
-  .score{font-size:36px;font-weight:800;color:#2563eb;margin:18px 0}
-  @media print{button{display:none}}
-  </style>
+function gpaPage() {
+  const gpa = calculateGPA();
+
+  return shell(
+    "GPA Calculator",
+    "Calculate your current semester GPA, then save the semester to your CGPA.",
+    `
+      <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-xl font-black">Current Semester</h2>
+            <p class="text-sm text-slate-500 mt-1">Enter each course, its unit and your grade.</p>
+          </div>
+          <select id="gpaSystem" class="input sm:w-44">
+            <option value="5.0" ${state.system === "5.0" ? "selected" : ""}>5.0 System</option>
+            <option value="4.0" ${state.system === "4.0" ? "selected" : ""}>4.0 System</option>
+          </select>
+        </div>
+
+        <div class="space-y-3">
+          ${state.courses.length ? state.courses.map((course, index) => `
+            <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-black">Course ${index + 1}</span>
+                <button type="button" data-remove-course="${course.id}"
+                  class="text-sm font-bold text-red-600">Remove</button>
+              </div>
+
+              <div class="grid md:grid-cols-4 gap-3">
+                <input class="input" data-course-field="${course.id}" data-field="code"
+                  value="${esc(course.code)}" placeholder="Course code">
+                <input class="input" data-course-field="${course.id}" data-field="name"
+                  value="${esc(course.name)}" placeholder="Course name">
+                <input class="input" type="number" min="0" max="30" step="1"
+                  data-course-field="${course.id}" data-field="unit"
+                  value="${esc(course.unit)}" placeholder="Credit units">
+                <select class="input" data-course-field="${course.id}" data-field="grade">
+                  ${gradeOptions(course.grade)}
+                </select>
+              </div>
+            </div>
+          `).join("") : `
+            <div class="text-center py-10 text-slate-500">No courses added.</div>
+          `}
+        </div>
+
+        <button type="button" data-add-course
+          class="w-full mt-5 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 py-3 rounded-xl font-black text-blue-600">
+          + Add Course
+        </button>
+
+        <div class="mt-6 grid md:grid-cols-2 gap-4">
+          <div class="rounded-2xl bg-blue-50 dark:bg-blue-950 p-6">
+            <p class="text-sm text-slate-500">Current GPA</p>
+            <div class="big-number text-6xl font-black text-blue-600 mt-1">${gpa.toFixed(2)}</div>
+            <p class="text-sm mt-2">${performanceText(gpa)} · out of ${state.system}</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50 dark:bg-slate-800 p-6">
+            <p class="text-sm text-slate-500">Semester summary</p>
+            <div class="mt-3 space-y-2 text-sm">
+              <div class="flex justify-between"><span>Courses</span><strong>${state.courses.length}</strong></div>
+              <div class="flex justify-between"><span>Total units</span><strong>${currentSemesterUnits()}</strong></div>
+            </div>
+            <button type="button" data-save-semester
+              class="w-full mt-5 bg-blue-600 text-white py-3 rounded-xl font-black">
+              Save Semester to CGPA
+            </button>
+            <button type="button" data-export-pdf
+              class="w-full mt-2 bg-slate-900 dark:bg-slate-700 text-white py-3 rounded-xl font-bold">
+              Print / Export Result
+            </button>
+          </div>
+        </div>
+      </section>
+    `
+  );
+}
+
+/* ---------- Tasks ---------- */
+
+function tasksPage() {
+  const pending = state.assignments.filter(a => !a.completed).length;
+  return shell(
+    "Assignments",
+    "Keep track of deadlines without unnecessary complexity.",
+    `
+      <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div class="grid md:grid-cols-3 gap-3">
+          <input id="taskTitle" class="input" placeholder="Assignment title">
+          <input id="taskCourse" class="input" placeholder="Course code">
+          <input id="taskDate" class="input" type="date">
+        </div>
+        <button type="button" data-add-task
+          class="w-full mt-3 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black">
+          Add Assignment
+        </button>
+      </section>
+
+      <div class="flex items-center justify-between mt-6 mb-3">
+        <h2 class="font-black text-xl">Your tasks</h2>
+        <span class="text-sm text-slate-500">${pending} pending</span>
+      </div>
+
+      <div class="space-y-3">
+        ${state.assignments.length ? state.assignments.map(a => `
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3">
+            <button type="button" data-toggle-task="${a.id}"
+              class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">
+              ${a.completed ? "✓" : ""}
+            </button>
+            <div class="flex-1 min-w-0">
+              <p class="font-bold ${a.completed ? "line-through opacity-50" : ""}">${esc(a.title)}</p>
+              <p class="text-sm text-slate-500">${esc(a.course || "General")} ${a.date ? "· " + esc(a.date) : ""}</p>
+            </div>
+            <button type="button" data-delete-task="${a.id}" class="text-red-600 font-bold">Delete</button>
+          </div>
+        `).join("") : `
+          <div class="text-center py-14 text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+            <div class="text-3xl">✓</div>
+            <p class="font-bold mt-2">No assignments yet.</p>
+          </div>
+        `}
+      </div>
+    `
+  );
+}
+
+/* ---------- Timetable ---------- */
+
+function timetablePage() {
+  return shell(
+    "Timetable",
+    "Keep your weekly classes in one simple place.",
+    `
+      <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div class="grid md:grid-cols-4 gap-3">
+          <select id="classDay" class="input">${DAYS.map(d => `<option>${d}</option>`).join("")}</select>
+          <input id="classCourse" class="input" placeholder="Course code">
+          <input id="classTime" class="input" placeholder="Time e.g. 10:00 AM">
+          <input id="classLocation" class="input" placeholder="Venue">
+        </div>
+        <button type="button" data-add-class
+          class="w-full mt-3 bg-blue-600 text-white py-3 rounded-xl font-black">
+          Add Class
+        </button>
+      </section>
+
+      <div class="grid md:grid-cols-2 gap-3 mt-5">
+        ${state.timetable.length ? state.timetable.map(item => `
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
+            <div class="flex justify-between gap-3">
+              <div>
+                <p class="text-xs font-bold text-blue-600">${esc(item.day)}</p>
+                <h3 class="font-black text-xl mt-1">${esc(item.course)}</h3>
+                <p class="text-sm text-slate-500 mt-1">${esc(item.time || "Time not set")}</p>
+                <p class="text-sm text-slate-500">${esc(item.location || "Venue not set")}</p>
+              </div>
+              <button type="button" data-delete-class="${item.id}" class="text-red-600 font-bold">Delete</button>
+            </div>
+          </div>
+        `).join("") : `
+          <div class="md:col-span-2 text-center py-14 text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+            <div class="text-3xl">▦</div>
+            <p class="font-bold mt-2">Your timetable is empty.</p>
+          </div>
+        `}
+      </div>
+    `
+  );
+}
+
+/* ---------- Goals ---------- */
+
+function goalsPage() {
+  return shell(
+    "Academic Goals",
+    "Keep simple academic goals and mark them complete.",
+    `
+      <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="goalTitle" class="input" placeholder="e.g. Reach a 4.5 CGPA">
+          <button type="button" data-add-goal class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black">Add Goal</button>
+        </div>
+      </section>
+
+      <div class="space-y-3 mt-5">
+        ${state.goals.length ? state.goals.map(g => `
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3">
+            <button type="button" data-toggle-goal="${g.id}"
+              class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold">
+              ${g.completed ? "✓" : ""}
+            </button>
+            <p class="flex-1 font-bold ${g.completed ? "line-through opacity-50" : ""}">${esc(g.title)}</p>
+            <button type="button" data-delete-goal="${g.id}" class="text-red-600 font-bold">Delete</button>
+          </div>
+        `).join("") : `
+          <div class="text-center py-14 text-slate-500">No goals yet.</div>
+        `}
+      </div>
+    `
+  );
+}
+
+/* ---------- Notes ---------- */
+
+function notesPage() {
+  return shell(
+    "Study Notes",
+    "Notes are saved automatically on this device.",
+    `
+      <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <textarea id="notesBox" class="input min-h-[360px]"
+          placeholder="Write your study notes here...">${esc(state.notes)}</textarea>
+        <p class="text-xs text-slate-500 mt-2">Saved automatically.</p>
+      </section>
+    `
+  );
+}
+
+/* ---------- Profile ---------- */
+
+function profilePage() {
+  const fields = [
+    ["name","Full name"],
+    ["school","School / University"],
+    ["department","Department"],
+    ["level","Level"],
+    ["matric","Matric number"]
+  ];
+
+  return shell(
+    "Student Profile",
+    "Keep your academic identity ready for your results.",
+    `
+      <section class="max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div class="space-y-4">
+          ${fields.map(([key,label]) => `
+            <label class="block text-sm font-bold">
+              ${label}
+              <input class="input mt-2" data-profile="${key}"
+                value="${esc(state.profile[key])}" placeholder="${label}">
+            </label>
+          `).join("")}
+        </div>
+        <button type="button" data-save-profile
+          class="w-full mt-5 bg-blue-600 text-white py-3 rounded-xl font-black">
+          Save Profile
+        </button>
+      </section>
+    `
+  );
+}
+
+/* ---------- Feedback ---------- */
+
+function feedbackPage() {
+  return shell(
+    "Feedback",
+    "Help us make CampusCalc better. Tell us what works, what doesn't and what you want next.",
+    `
+      <section class="max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <label class="block text-sm font-bold">
+          Feedback type
+          <select id="feedbackType" class="input mt-2">
+            ${["Suggestion","Bug Report","Feature Request","General Feedback"].map(t =>
+              `<option ${state.feedbackDraft.type === t ? "selected" : ""}>${t}</option>`
+            ).join("")}
+          </select>
+        </label>
+
+        <label class="block text-sm font-bold mt-4">
+          Your message
+          <textarea id="feedbackMessage" class="input mt-2 min-h-[180px]"
+            placeholder="Tell us what you think...">${esc(state.feedbackDraft.message)}</textarea>
+        </label>
+
+        <div class="rounded-xl bg-slate-50 dark:bg-slate-800 p-4 mt-4 text-sm text-slate-500">
+          Please do not include passwords, payment details or other private information.
+        </div>
+
+        <button type="button" data-send-feedback
+          class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black">
+          Send Feedback
+        </button>
+
+        <p class="text-xs text-slate-500 mt-3 text-center">
+          Feedback delivery will use the contact method configured by the CampusCalc owner.
+        </p>
+      </section>
+    `
+  );
+}
+
+/* ---------- More ---------- */
+
+function morePage() {
+  return shell(
+    "More",
+    "Additional tools and app settings.",
+    `
+      <div class="grid md:grid-cols-2 gap-4">
+        ${card("▦","Timetable","Organize weekly classes.","timetable")}
+        ${card("★","Academic Goals","Set and track goals.","goals")}
+        ${card("✎","Study Notes","Keep notes on this device.","notes")}
+        ${card("?","Feedback","Send suggestions or bug reports.","feedback")}
+        ${card("👤","Student Profile","Manage your academic information.","profile")}
+        ${card("⚙","Settings","Backup, import and reset app data.","settings")}
+      </div>
+    `
+  );
+}
+
+/* ---------- Settings ---------- */
+
+function settingsPage() {
+  return shell(
+    "Settings",
+    "Manage appearance and your local CampusCalc data.",
+    `
+      <div class="space-y-4 max-w-2xl">
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <h2 class="font-black text-lg">Appearance</h2>
+          <p class="text-sm text-slate-500 mt-1">Choose light or dark mode.</p>
+          <button type="button" data-action="toggle-dark"
+            class="mt-4 bg-slate-100 dark:bg-slate-800 px-5 py-3 rounded-xl font-bold">
+            ${state.dark ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
+          </button>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+          <h2 class="font-black text-lg">Backup</h2>
+          <p class="text-sm text-slate-500 mt-1">Export your local data before changing devices.</p>
+          <div class="flex flex-wrap gap-2 mt-4">
+            <button type="button" data-export
+              class="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold">Export Data</button>
+            <label class="bg-slate-900 dark:bg-slate-700 text-white px-5 py-3 rounded-xl font-bold cursor-pointer">
+              Import Data
+              <input id="importFile" type="file" accept=".json,application/json" class="hidden">
+            </label>
+          </div>
+        </section>
+
+        <section class="bg-white dark:bg-slate-900 rounded-2xl border border-red-200 dark:border-red-900 p-5">
+          <h2 class="font-black text-lg text-red-600">Danger Zone</h2>
+          <p class="text-sm text-slate-500 mt-1">This permanently clears local data from this device.</p>
+          <button type="button" data-reset
+            class="mt-4 bg-red-600 text-white px-5 py-3 rounded-xl font-bold">
+            Reset All Data
+          </button>
+        </section>
+      </div>
+    `
+  );
+}
+
+/* ---------- print/export ---------- */
+
+function exportResult() {
+  const profile = state.profile;
+  const gpa = calculateGPA();
+  const rows = state.courses.map(c => `
+    <tr>
+      <td>${esc(c.code || "—")}</td>
+      <td>${esc(c.name || "—")}</td>
+      <td>${Number(c.unit) || 0}</td>
+      <td>${esc(c.grade || "—")}</td>
+    </tr>
+  `).join("");
+
+  const win = window.open("", "_blank");
+  if (!win) {
+    showToast("Allow pop-ups to print your result.");
+    return;
+  }
+
+  win.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CampusCalc Result</title>
 <style>
-@media(max-width:767px){
-  header .max-w-7xl{padding-left:12px;padding-right:12px}
-  main{padding-left:12px!important;padding-right:12px!important}
-  .max-w-2xl{max-width:100%}
-  nav button{min-height:62px!important}
-  nav button .text-xl{font-size:18px}
-  .bg-gradient-to-br{border-radius:20px!important;padding:20px!important}
-  .text-3xl{font-size:25px}
-  .text-6xl{font-size:48px}
-}
+body{font-family:Arial,sans-serif;padding:35px;color:#0f172a;max-width:900px;margin:auto}
+h1{margin:0;color:#2563eb} .muted{color:#64748b}
+.score{font-size:38px;font-weight:800;margin:24px 0;color:#2563eb}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}
+th{background:#eff6ff}
+@media print{button{display:none}}
 </style>
-</head><body>
-  <h1>CampusCalc</h1><div class="muted">Student Academic Result</div>
-  <p><b>${esc(profile.name||"Student")}</b><br>${esc(profile.school||"")}${profile.department?" · "+esc(profile.department):""}</p>
-  <div class="score">GPA: ${gpa().toFixed(2)} / ${state.system==="custom"?"5.0":state.system}</div>
-  <table><thead><tr><th>Code</th><th>Course</th><th>Units</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table>
-  <p class="muted">Generated by CampusCalc</p><script>window.onload=()=>{window.print()}<\/script></body></html>`);
-  w.document.close();
-}
-function updateConnectionStatus(){
-  const el=document.getElementById("connectionStatus");
-  if(!el)return;
-  const online=navigator.onLine;
-  el.className=online?"online":"offline";
-  el.textContent=online?"● Online":"● Offline";
-  el.style.display="block";
-  setTimeout(()=>{if(navigator.onLine)el.style.display="none"},2200);
-}
-window.addEventListener("online",updateConnectionStatus);
-window.addEventListener("offline",updateConnectionStatus);
-updateConnectionStatus();
+</head>
+<body>
+<h1>CampusCalc</h1>
+<p class="muted">Student Academic Result</p>
+<p><strong>${esc(profile.name || "Student")}</strong><br>
+${esc(profile.school || "")}${profile.department ? " · " + esc(profile.department) : ""}</p>
+<div class="score">GPA: ${gpa.toFixed(2)} / ${state.system}</div>
+<table>
+<thead><tr><th>Code</th><th>Course</th><th>Units</th><th>Grade</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+<p class="muted">Generated by CampusCalc</p>
+<script>window.onload=function(){window.print()}<\/script>
+</body>
+</html>`);
 
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+  win.document.close();
+}
+
+/* ---------- events ---------- */
+
+function bindEvents() {
+  const app = document.getElementById("app");
+
+  app.onclick = function(e) {
+    const el = e.target.closest("button");
+    if (!el || !app.contains(el)) return;
+
+    if (el.dataset.nav) {
+      setPage(el.dataset.nav);
+      return;
+    }
+
+    if (el.dataset.action === "toggle-dark") {
+      state.dark = !state.dark;
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.addCourse !== undefined) {
+      state.courses.push({
+        id: uid(),
+        code: "",
+        name: "",
+        unit: 3,
+        grade: "A"
+      });
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.removeCourse) {
+      if (state.courses.length <= 1) {
+        showToast("Keep at least one course.");
+        return;
+      }
+      state.courses = state.courses.filter(c => c.id !== el.dataset.removeCourse);
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.saveSemester !== undefined) {
+      const units = currentSemesterUnits();
+      if (!units) {
+        showToast("Add credit units before saving.");
+        return;
+      }
+
+      const gpa = calculateGPA();
+      state.semesters.push({
+        id: uid(),
+        name: "Semester " + (state.semesters.length + 1),
+        gpa,
+        units,
+        system: state.system,
+        date: new Date().toLocaleDateString()
+      });
+
+      save();
+      showToast("Semester saved to CGPA.");
+      setPage("cgpa");
+      return;
+    }
+
+    if (el.dataset.deleteSemester) {
+      if (!confirm("Delete this saved semester?")) return;
+      state.semesters = state.semesters.filter(s => s.id !== el.dataset.deleteSemester);
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.exportPdf !== undefined) {
+      exportResult();
+      return;
+    }
+
+    if (el.dataset.addTask !== undefined) {
+      const title = document.getElementById("taskTitle")?.value.trim();
+      const course = document.getElementById("taskCourse")?.value.trim();
+      const date = document.getElementById("taskDate")?.value;
+
+      if (!title) {
+        showToast("Enter an assignment title.");
+        return;
+      }
+
+      state.assignments.push({ id: uid(), title, course, date, completed: false });
+      save();
+      render();
+      showToast("Assignment added.");
+      return;
+    }
+
+    if (el.dataset.toggleTask) {
+      const task = state.assignments.find(a => a.id === el.dataset.toggleTask);
+      if (task) task.completed = !task.completed;
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.deleteTask) {
+      state.assignments = state.assignments.filter(a => a.id !== el.dataset.deleteTask);
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.addClass !== undefined) {
+      const course = document.getElementById("classCourse")?.value.trim();
+      if (!course) {
+        showToast("Enter a course code.");
+        return;
+      }
+
+      state.timetable.push({
+        id: uid(),
+        day: document.getElementById("classDay")?.value || DAYS[0],
+        course,
+        time: document.getElementById("classTime")?.value.trim() || "",
+        location: document.getElementById("classLocation")?.value.trim() || ""
+      });
+
+      save();
+      render();
+      showToast("Class added.");
+      return;
+    }
+
+    if (el.dataset.deleteClass) {
+      state.timetable = state.timetable.filter(x => x.id !== el.dataset.deleteClass);
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.addGoal !== undefined) {
+      const title = document.getElementById("goalTitle")?.value.trim();
+      if (!title) {
+        showToast("Enter a goal.");
+        return;
+      }
+
+      state.goals.push({ id: uid(), title, completed: false });
+      save();
+      render();
+      showToast("Goal added.");
+      return;
+    }
+
+    if (el.dataset.toggleGoal) {
+      const goal = state.goals.find(g => g.id === el.dataset.toggleGoal);
+      if (goal) goal.completed = !goal.completed;
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.deleteGoal) {
+      state.goals = state.goals.filter(g => g.id !== el.dataset.deleteGoal);
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.saveProfile !== undefined) {
+      save();
+      showToast("Profile saved.");
+      setPage("dashboard");
+      return;
+    }
+
+    if (el.dataset.sendFeedback !== undefined) {
+      const type = document.getElementById("feedbackType")?.value || "Suggestion";
+      const message = document.getElementById("feedbackMessage")?.value.trim() || "";
+
+      if (!message) {
+        showToast("Write your feedback first.");
+        return;
+      }
+
+      state.feedbackDraft = { type, message };
+      save();
+
+      /*
+        OWNER SETUP:
+        Replace this email with the official CampusCalc feedback email.
+        This opens the user's mail app. It does not silently upload private data.
+      */
+      const ownerEmail = "YOUR_FEEDBACK_EMAIL@example.com";
+      const subject = encodeURIComponent("CampusCalc " + type);
+      const body = encodeURIComponent(
+        message +
+        "\n\n---\nCampusCalc feedback\nType: " + type +
+        "\nDevice: " + navigator.userAgent
+      );
+
+      if (ownerEmail.includes("YOUR_FEEDBACK_EMAIL")) {
+        showToast("Feedback is saved. Connect your feedback email/backend next.");
+        return;
+      }
+
+      window.location.href = `mailto:${ownerEmail}?subject=${subject}&body=${body}`;
+      return;
+    }
+
+    if (el.dataset.export !== undefined) {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "campuscalc-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Backup exported.");
+      return;
+    }
+
+    if (el.dataset.reset !== undefined) {
+      if (!confirm("Delete all CampusCalc data from this device?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = loadState();
+      render();
+      showToast("Data reset.");
+      return;
+    }
+  };
+
+  app.oninput = function(e) {
+    const el = e.target;
+
+    if (el.dataset.courseField) {
+      const course = state.courses.find(c => c.id === el.dataset.courseField);
+      if (!course) return;
+
+      if (el.dataset.field === "unit") {
+        course.unit = Math.max(0, Number(el.value) || 0);
+      } else {
+        course[el.dataset.field] = el.value;
+      }
+
+      save();
+      return;
+    }
+
+    if (el.dataset.profile) {
+      state.profile[el.dataset.profile] = el.value;
+      save();
+      return;
+    }
+
+    if (el.id === "notesBox") {
+      state.notes = el.value;
+      save();
+      return;
+    }
+
+    if (el.id === "feedbackMessage") {
+      state.feedbackDraft.message = el.value;
+      save();
+      return;
+    }
+  };
+
+  app.onchange = function(e) {
+    const el = e.target;
+
+    if (el.id === "gpaSystem" || el.id === "cgpaSystem") {
+      state.system = el.value;
+      state.courses.forEach(c => {
+        if (!Object.prototype.hasOwnProperty.call(GRADE_POINTS[state.system], c.grade)) {
+          c.grade = "A";
+        }
+      });
+      save();
+      render();
+      return;
+    }
+
+    if (el.dataset.courseField) {
+      const course = state.courses.find(c => c.id === el.dataset.courseField);
+      if (!course) return;
+
+      course[el.dataset.field] = el.value;
+      save();
+      render();
+      return;
+    }
+
+    if (el.id === "feedbackType") {
+      state.feedbackDraft.type = el.value;
+      save();
+      return;
+    }
+
+    if (el.id === "importFile" && el.files?.[0]) {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          state = normalizeState(imported);
+          save();
+          render();
+          showToast("Backup imported successfully.");
+        } catch (_) {
+          showToast("That backup file is not valid.");
+        }
+      };
+
+      reader.readAsText(el.files[0]);
+    }
+  };
 }
 
 /* ---------- render ---------- */
-function render(){
-  document.documentElement.classList.toggle("dark",!!state.dark);
-  let html="";
-  switch(state.page){
-    case "dashboard":html=dashboard();break;
-    case "gpa":html=gpaPage();break;
-    case "cgpa":html=cgpaPage();break;
-    case "tasks":html=tasksPage();break;
-    case "timetable":html=timetablePage();break;
-    case "goals":html=goalsPage();break;
-    case "notes":html=notesPage();break;
-    case "profile":html=profilePage();break;
-    case "settings":html=settingsPage();break;
-    case "more":html=morePage();break;
-    default:state.page="dashboard";html=dashboard();
+
+function render() {
+  document.documentElement.classList.toggle("dark", !!state.dark);
+
+  let html;
+
+  switch (state.page) {
+    case "dashboard": html = dashboardPage(); break;
+    case "cgpa": html = cgpaPage(); break;
+    case "gpa": html = gpaPage(); break;
+    case "tasks": html = tasksPage(); break;
+    case "timetable": html = timetablePage(); break;
+    case "goals": html = goalsPage(); break;
+    case "notes": html = notesPage(); break;
+    case "profile": html = profilePage(); break;
+    case "feedback": html = feedbackPage(); break;
+    case "settings": html = settingsPage(); break;
+    case "more": html = morePage(); break;
+    default:
+      state.page = "dashboard";
+      html = dashboardPage();
   }
-  document.getElementById("app").innerHTML=html;
-  bind();
-}
 
-/* ---------- events: one delegated click handler ---------- */
-function bind(){
-  const app=document.getElementById("app");
-  app.onclick=async function(e){
-    const el=e.target.closest("button,[data-nav],[data-action],[data-system],[data-course],[data-profile],[data-add-course],[data-share-course]");
-    if(!el || !app.contains(el))return;
-
-    const navTarget=el.dataset.nav;
-    if(navTarget){setPage(navTarget);return}
-
-    if(el.dataset.action==="dark"){
-      state.dark=!state.dark;save();render();return;
-    }
-    if(el.dataset.system){
-      state.system=el.dataset.system;save();render();return;
-    }
-    if(el.hasAttribute("data-add-course")){
-      state.courses.push({id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0});
-      save();render();return;
-    }
-    if(el.dataset.removeCourse){
-      state.courses=state.courses.filter(c=>c.id!==el.dataset.removeCourse);
-      if(!state.courses.length)state.courses.push({id:uid(),code:"",name:"",unit:3,grade:"A",rating:0,shares:0});
-      save();render();return;
-    }
-    if(el.dataset.shareCourse){
-      const c=state.courses.find(x=>x.id===el.dataset.shareCourse);
-      if(c){
-        const text=`${c.name||c.code||"My class"}${c.code&&c.name?" ("+c.code+")":""}\nRating: ${c.rating||0}/5\nShared from CampusCalc`;
-        try{
-          if(navigator.share)await navigator.share({title:"CampusCalc Class",text});
-          else await navigator.clipboard.writeText(text);
-          c.shares=(Number(c.shares)||0)+1;save();toast("Class shared!");
-        }catch(e){}
-      }
-      return;
-    }
-    if(el.dataset.exportPdf){ exportPDF(); return; }
-    if(el.dataset.saveSemester){
-      const units=state.courses.reduce((a,c)=>a+(Number(c.unit)||0),0);
-      if(!units){toast("Add course units first.");return}
-      state.semesters.push({id:uid(),name:"Semester "+(state.semesters.length+1),gpa:gpa(),units,system:state.system,date:new Date().toLocaleDateString()});
-      save();toast("Semester saved!");setPage("cgpa");return;
-    }
-    if(el.dataset.deleteSemester){
-      state.semesters=state.semesters.filter(x=>x.id!==el.dataset.deleteSemester);save();render();return;
-    }
-    if(el.dataset.addTask){
-      const title=document.getElementById("taskTitle").value.trim();
-      if(!title){toast("Enter an assignment title.");return}
-      state.assignments.push({id:uid(),title,course:document.getElementById("taskCourse").value.trim(),date:document.getElementById("taskDate").value,completed:false});
-      save();render();toast("Assignment added!");return;
-    }
-    if(el.dataset.toggleTask){const x=state.assignments.find(a=>a.id===el.dataset.toggleTask);if(x)x.completed=!x.completed;save();render();return}
-    if(el.dataset.deleteTask){state.assignments=state.assignments.filter(a=>a.id!==el.dataset.deleteTask);save();render();return}
-    if(el.dataset.addClass){
-      const course=document.getElementById("classCourse").value.trim();
-      if(!course){toast("Enter a course.");return}
-      state.timetable.push({id:uid(),day:document.getElementById("classDay").value,course,time:document.getElementById("classTime").value,location:document.getElementById("classLocation").value.trim()});
-      save();render();toast("Class added!");return;
-    }
-    if(el.dataset.deleteClass){state.timetable=state.timetable.filter(x=>x.id!==el.dataset.deleteClass);save();render();return}
-    if(el.dataset.addGoal){
-      const title=document.getElementById("goalTitle").value.trim();
-      if(!title){toast("Enter a goal.");return}
-      state.goals.push({id:uid(),title,completed:false});save();render();toast("Goal added!");return;
-    }
-    if(el.dataset.toggleGoal){const x=state.goals.find(g=>g.id===el.dataset.toggleGoal);if(x)x.completed=!x.completed;save();render();return}
-    if(el.dataset.deleteGoal){state.goals=state.goals.filter(g=>g.id!==el.dataset.deleteGoal);save();render();return}
-    if(el.dataset.saveProfile){save();toast("Profile saved!");setPage("dashboard");return}
-    if(el.dataset.export){
-      const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-      const url=URL.createObjectURL(blob),a=document.createElement("a");
-      a.href=url;a.download="campuscalc-backup.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast("Backup exported!");return;
-    }
-    if(el.dataset.reset){
-      if(confirm("Delete all CampusCalc data from this device?")){
-        localStorage.removeItem(KEY);state=load();render();toast("Data reset.");
-      }
-      return;
-    }
-  };
-
-  app.oninput=function(e){
-    const el=e.target;
-    if(el.dataset.course){
-      const c=state.courses.find(x=>x.id===el.dataset.course);
-      if(c){c[el.dataset.field]=el.value;save();}
-      if(el.dataset.field==="unit"||el.dataset.field==="grade"||el.dataset.field==="rating")render();
-      return;
-    }
-    if(el.dataset.profile){
-      state.profile[el.dataset.profile]=el.value;save();return;
-    }
-    if(el.id==="notesBox"){state.notes=el.value;save();return}
-  };
-  app.onchange=function(e){
-    const el=e.target;
-    if(el.dataset.systemSelect){state.system=el.value;save();render();return}
-    if(el.id==="importFile"&&el.files[0]){
-      const reader=new FileReader();
-      reader.onload=()=>{try{const d=JSON.parse(reader.result);state={...state,...d,page:"settings"};save();render();toast("Backup imported!")}catch(e){toast("Invalid backup file.")}};
-      reader.readAsText(el.files[0]);
-    }
-    if(el.dataset.course){
-      const c=state.courses.find(x=>x.id===el.dataset.course);
-      if(c){c[el.dataset.field]=el.value;save();render();}
-    }
-  };
+  document.getElementById("app").innerHTML = html;
+  bindEvents();
 }
 
 render();
+
+/* ---------- offline support ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
