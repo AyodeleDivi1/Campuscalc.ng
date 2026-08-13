@@ -13,6 +13,10 @@
   <title>CampusCalc — Student Academic Toolkit</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase (used for CampusCalc Feedback) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script>
     tailwind.config = { darkMode: "class" };
   </script>
@@ -71,6 +75,27 @@
    ========================= */
 
 const STORAGE_KEY = "campuscalc_stable_v2";
+
+/* =========================
+   Firebase — Feedback backend
+   ========================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDxmZGeeGGuJ0O6-AVfY_QEHFAnLFKswSw",
+  authDomain: "campuscalc-1a78b.firebaseapp.com",
+  projectId: "campuscalc-1a78b",
+  storageBucket: "campuscalc-1a78b.firebasestorage.app",
+  messagingSenderId: "45206566971",
+  appId: "1:45206566971:web:08a8cf40de2c09c3d9841e",
+  measurementId: "G-4HK7BD7MSQ"
+};
+
+let db = null;
+try {
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+}
 
 const GRADE_POINTS = {
   "5.0": { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 },
@@ -750,7 +775,7 @@ function feedbackPage() {
         </button>
 
         <p class="text-xs text-slate-500 mt-3 text-center">
-          Feedback delivery will use the contact method configured by the CampusCalc owner.
+          Your feedback is securely submitted to CampusCalc. Please do not include passwords or payment details.
         </p>
       </section>
     `
@@ -877,7 +902,7 @@ ${esc(profile.school || "")}${profile.department ? " · " + esc(profile.departme
 function bindEvents() {
   const app = document.getElementById("app");
 
-  app.onclick = function(e) {
+  app.onclick = async function(e) {
     const el = e.target.closest("button");
     if (!el || !app.contains(el)) return;
 
@@ -1058,28 +1083,34 @@ function bindEvents() {
         return;
       }
 
-      state.feedbackDraft = { type, message };
-      save();
-
-      /*
-        OWNER SETUP:
-        Replace this email with the official CampusCalc feedback email.
-        This opens the user's mail app. It does not silently upload private data.
-      */
-      const ownerEmail = "YOUR_FEEDBACK_EMAIL@example.com";
-      const subject = encodeURIComponent("CampusCalc " + type);
-      const body = encodeURIComponent(
-        message +
-        "\n\n---\nCampusCalc feedback\nType: " + type +
-        "\nDevice: " + navigator.userAgent
-      );
-
-      if (ownerEmail.includes("YOUR_FEEDBACK_EMAIL")) {
-        showToast("Feedback is saved. Connect your feedback email/backend next.");
+      if (!db) {
+        showToast("Feedback service is not available right now.");
         return;
       }
 
-      window.location.href = `mailto:${ownerEmail}?subject=${subject}&body=${body}`;
+      // Prevent accidental double submissions while the request is running.
+      el.disabled = true;
+      el.textContent = "Sending...";
+
+      try {
+        await db.collection("feedback").add({
+          type,
+          message,
+          page: state.page,
+          status: "new",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        state.feedbackDraft = { type: "Suggestion", message: "" };
+        save();
+        render();
+        showToast("Thanks! Your feedback has been submitted successfully.");
+      } catch (error) {
+        console.error("Feedback submission failed:", error);
+        el.disabled = false;
+        el.textContent = "Send Feedback";
+        showToast("Could not submit feedback. Please try again.");
+      }
       return;
     }
 
