@@ -90,6 +90,14 @@
     .app-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(15,23,42,.08); }
     .dark .app-card:hover { box-shadow: 0 12px 30px rgba(0,0,0,.22); }
     .nav-btn { min-height: 64px; }
+    #installPrompt {
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    #installPrompt button { touch-action: manipulation; }
+    @media (max-width: 480px) {
+      #installPrompt { left: 12px; right: 12px; top: 12px; width: auto; }
+    }
     @media (max-width: 767px) {
       main { padding-left: 14px !important; padding-right: 14px !important; }
       .hero-title { font-size: 2rem; line-height: 1.1; }
@@ -101,6 +109,19 @@
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
   <div id="app"></div>
   <div id="toast" class="hidden fixed left-1/2 bottom-24 -translate-x-1/2 z-[10000] rounded-xl bg-slate-950 text-white px-5 py-3 shadow-2xl text-sm font-bold"></div>
+  <div id="installPrompt" class="hidden fixed top-3 right-3 z-[11000] w-[min(92vw,360px)] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 shadow-2xl p-4">
+    <div class="flex items-start gap-3">
+      <img src="icons/icon-192.png" alt="CampusCalc" class="w-12 h-12 rounded-xl object-cover shrink-0">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="font-black text-slate-900 dark:text-white">Install CampusCalc</h2>
+          <button id="dismissInstall" type="button" aria-label="Close install prompt" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-lg font-black">×</button>
+        </div>
+        <p id="installPromptText" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Add CampusCalc to your home screen for quick access.</p>
+        <button id="installAppButton" type="button" class="mt-3 w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white py-2.5 font-black text-sm">Install App</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 "use strict";
@@ -115,6 +136,7 @@ const STORAGE_KEY = "campuscalc_stable_v2";
    Firebase — Feedback backend
    ========================= */
 const firebaseConfig = {
+  // Replace this placeholder with the Web API key from Firebase Console > Project settings > Your apps.
   apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "campuscalc-1a78b.firebaseapp.com",
   projectId: "campuscalc-1a78b",
@@ -125,9 +147,14 @@ const firebaseConfig = {
 };
 
 let db = null;
+const firebaseReady = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
 try {
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
+  if (firebaseReady) {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } else {
+    console.warn("CampusCalc feedback is in local fallback mode until the Firebase Web API key is added.");
+  }
 } catch (error) {
   console.error("Firebase initialization failed:", error);
 }
@@ -809,8 +836,8 @@ function feedbackPage() {
           Send Feedback
         </button>
 
-        <p class="text-xs text-slate-500 mt-3 text-center">
-          Your feedback is securely submitted to CampusCalc. Please do not include passwords or payment details.
+        <p id="feedbackStatus" class="text-xs text-slate-500 mt-3 text-center">
+          Your feedback is sent securely when the feedback service is connected. Please do not include passwords or payment details.
         </p>
       </section>
     `
@@ -1118,28 +1145,41 @@ function bindEvents() {
         return;
       }
 
-      if (!db) {
-        showToast("Feedback service is not available right now.");
-        return;
-      }
-
       // Prevent accidental double submissions while the request is running.
       el.disabled = true;
       el.textContent = "Sending...";
 
-      try {
-        await db.collection("feedback").add({
-          type,
-          message,
-          page: state.page,
-          status: "new",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+      const feedback = {
+        id: uid(),
+        type,
+        message,
+        page: state.page,
+        status: "new",
+        createdAt: new Date().toISOString()
+      };
 
-        state.feedbackDraft = { type: "Suggestion", message: "" };
-        save();
-        render();
-        showToast("Thanks! Your feedback has been submitted successfully.");
+      try {
+        if (db) {
+          await db.collection("feedback").add({
+            type: feedback.type,
+            message: feedback.message,
+            page: feedback.page,
+            status: feedback.status,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          state.feedbackDraft = { type: "Suggestion", message: "" };
+          save();
+          render();
+          showToast("Thanks! Your feedback has been submitted successfully.");
+        } else {
+          const queued = JSON.parse(localStorage.getItem("campuscalc_feedback_queue") || "[]");
+          queued.push(feedback);
+          localStorage.setItem("campuscalc_feedback_queue", JSON.stringify(queued));
+          state.feedbackDraft = { type: "Suggestion", message: "" };
+          save();
+          render();
+          showToast("Feedback saved on this device. Connect Firebase to send it to the CampusCalc inbox.");
+        }
       } catch (error) {
         console.error("Feedback submission failed:", error);
         el.disabled = false;
@@ -1290,10 +1330,112 @@ function render() {
 
 render();
 
+
+/* ---------- install prompt ---------- */
+let deferredInstallPrompt = null;
+const INSTALL_DISMISSED_KEY = "campuscalc_install_dismissed_v2";
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function isAndroid() {
+  return /android/i.test(navigator.userAgent);
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function showInstallPrompt() {
+  const prompt = document.getElementById("installPrompt");
+  if (!prompt || isStandaloneMode()) return;
+  prompt.classList.remove("hidden");
+}
+
+function hideInstallPrompt(permanent = false) {
+  const prompt = document.getElementById("installPrompt");
+  if (prompt) prompt.classList.add("hidden");
+  if (permanent) {
+    try { localStorage.setItem(INSTALL_DISMISSED_KEY, "1"); } catch (_) {}
+  }
+}
+
+function showInstallInstructions() {
+  const text = document.getElementById("installPromptText");
+  const button = document.getElementById("installAppButton");
+  if (!text) return;
+
+  if (isIOS()) {
+    text.textContent = "Safari: tap Share, then choose Add to Home Screen, then tap Add.";
+  } else if (isAndroid()) {
+    text.textContent = "Chrome: tap ⋮ in the top-right menu, then choose Install app or Add to Home screen.";
+  } else {
+    text.textContent = "Open your browser menu and choose Install CampusCalc, Install app, or Add to Home screen.";
+  }
+
+  if (button) {
+    button.textContent = "Got it";
+    button.onclick = () => hideInstallPrompt(false);
+  }
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (!localStorage.getItem(INSTALL_DISMISSED_KEY)) {
+    setTimeout(showInstallPrompt, 700);
+  }
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  hideInstallPrompt(true);
+  showToast("CampusCalc installed successfully.");
+});
+
+window.addEventListener("load", () => {
+  const installButton = document.getElementById("installAppButton");
+  const dismissButton = document.getElementById("dismissInstall");
+
+  dismissButton?.addEventListener("click", () => hideInstallPrompt(true));
+
+  installButton?.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      try {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        if (choice?.outcome === "accepted") {
+          hideInstallPrompt(true);
+        } else {
+          showInstallInstructions();
+        }
+      } catch (_) {
+        deferredInstallPrompt = null;
+        showInstallInstructions();
+      }
+      return;
+    }
+
+    // A website cannot force the browser's native install dialog when the
+    // browser has not supplied beforeinstallprompt. Give the user the exact
+    // manual install path instead of making the button appear unresponsive.
+    showInstallInstructions();
+  });
+
+  if (!isStandaloneMode() && !localStorage.getItem(INSTALL_DISMISSED_KEY)) {
+    setTimeout(showInstallPrompt, 1200);
+  }
+});
+
 /* ---------- offline support ---------- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    navigator.serviceWorker.register("./service-worker.js").then(registration => {
+      registration.update().catch(() => {});
+    }).catch(() => {});
   });
 }
 </script>

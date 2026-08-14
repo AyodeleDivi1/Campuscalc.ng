@@ -1,24 +1,36 @@
 {
-  "name": "CampusCalc — Student Academic Toolkit",
+  "name": "CampusCalc — Free GPA & CGPA Calculator",
   "short_name": "CampusCalc",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#f8fafc",
   "theme_color": "#0f172a",
-  "description": "Professional GPA and CGPA calculator for students, with academic tools.",
+  "description": "Free GPA and CGPA calculator and academic toolkit for Nigerian university students.",
+  "lang": "en-NG",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
